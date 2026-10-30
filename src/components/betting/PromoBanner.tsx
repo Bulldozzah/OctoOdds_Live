@@ -6,7 +6,7 @@ const SLIDES = [
   {
     img: football,
     eyebrow: "Welcome bonus",
-    title: "100% up to K5,000",
+    title: "100% up to 5,000",
     text: "Double your first deposit and bet on 1,000+ daily events.",
     cta: "Get bonus",
   },

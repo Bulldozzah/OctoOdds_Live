@@ -8,7 +8,6 @@ import {
   stakeError,
   type Selection,
 } from "@/lib/betslip";
-import { CURRENCY } from "@/lib/sample-data";
 
 export interface PlacedBet {
   id: string;
@@ -21,7 +20,7 @@ export interface PlacedBet {
 
 const QUICK = [10, 50, 100, 500];
 const money = (n: number) =>
-  `${CURRENCY}${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function BetSlip({
   slip,
@@ -156,7 +155,7 @@ export function BetSlip({
               )}
               <label className="block">
                 <span className="mb-1 block text-[11px] font-semibold uppercase text-muted-foreground">
-                  {effectiveMode === "acca" ? "Stake" : "Stake per bet"} ({CURRENCY})
+                  {effectiveMode === "acca" ? "Stake" : "Stake per bet"}
                 </span>
                 <input
                   inputMode="decimal"

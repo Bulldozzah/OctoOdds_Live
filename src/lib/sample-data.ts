@@ -355,4 +355,3 @@ export const TOP_LEAGUES = [
   { flag: "🇺🇸", name: "NBA" },
 ];
 
-export const CURRENCY = "K";

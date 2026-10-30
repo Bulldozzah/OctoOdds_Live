@@ -1,9 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRightLeft, Database, Gauge, Layers, LineChart as LineIcon, Percent, Trophy } from "lucide-react";
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  ArrowRightLeft,
+  Database,
+  Eye,
+  Gauge,
+  Layers,
+  LineChart as LineIcon,
+  Percent,
+  Trophy,
+} from "lucide-react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   BOOKMAKERS,
@@ -14,11 +38,19 @@ import {
   type Game,
 } from "@/lib/odds-feed";
 import { freshGames, margin, patternsFor, scenariosFor } from "@/lib/scanner";
-import { POOL_SIZE, expectedVsActual, rankMargins, structureLadder, valueRanking, type PoolItem, type ValueRow } from "@/lib/edge";
+import {
+  POOL_SIZE,
+  expectedVsActual,
+  rankMargins,
+  structureLadder,
+  valueRanking,
+  type PoolItem,
+  type ValueRow,
+} from "@/lib/edge";
 import { CACHE_MS, loadScannerState, type ScanSnapshot } from "@/lib/scanner-store";
 import { sendToCalculator } from "@/lib/calculator-plans";
 import { EVENT_LETTERS } from "@/lib/calculator";
-import { fmtDay, hhmm, money, outcomeText } from "@/components/scanner/ComboCard";
+import { fmtDay, hhmm, money, outcomeText, PreviewDialog } from "@/components/scanner/ComboCard";
 
 const ALL_BOOKS = BOOKMAKERS.map((b) => b.id);
 const DEMO_LEAGUES = ["epl", "laliga", "seriea", "bundesliga"];
@@ -26,7 +58,13 @@ const SHOW = 40;
 const pct = (n: number, d = 1) => `${(n * 100).toFixed(d)}%`;
 const ago = (ms: number) => {
   const m = Math.max(0, Math.round(ms / 60000));
-  return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+  return m < 1
+    ? "just now"
+    : m < 60
+      ? `${m} min ago`
+      : m < 1440
+        ? `${Math.round(m / 60)} h ago`
+        : `${Math.round(m / 1440)} d ago`;
 };
 
 export function Edge() {
@@ -59,7 +97,9 @@ export function Edge() {
       key: "edge-demo",
       label: "Demo odds · 4 leagues",
       fetchedAt: t,
-      games: DEMO_LEAGUES.flatMap((id) => generateLeagueFixtures(id, t, "demo")).sort((a, b) => a.kickoff - b.kickoff),
+      games: DEMO_LEAGUES.flatMap((id) => generateLeagueFixtures(id, t, "demo")).sort(
+        (a, b) => a.kickoff - b.kickoff,
+      ),
     });
     setNow(t);
     setPicked(null);
@@ -67,7 +107,7 @@ export function Edge() {
 
   const data = useMemo(() => {
     if (!scan || !now) return null;
-    const fresh = freshGames(scan.games, now, ALL_BOOKS);
+    const fresh = freshGames(scan.games, now, ALL_BOOKS, { keepStale: true });
     const games = useWindow
       ? fresh.games.filter((g) => {
           const t = hhmm(g.kickoff);
@@ -120,7 +160,8 @@ export function Edge() {
               <span className="text-cta">Edge</span> · what is it actually worth
             </h1>
             <p className="text-xs text-header-muted">
-              A free second opinion on the Scanner's odds. Reads its last scan and never fetches prices itself.
+              A free second opinion on the Scanner's odds. Reads its last scan and never fetches
+              prices itself.
             </p>
           </div>
           <button onClick={loadDemo} className="btn-ghost-header h-9 px-3 text-xs">
@@ -131,13 +172,21 @@ export function Edge() {
           <span className="text-muted-foreground">
             Source:{" "}
             <b className="text-foreground">
-              {scan ? (scan.source === "demo" ? scan.label : `Scanner · ${scan.label}`) : ready ? "nothing cached yet" : "…"}
+              {scan
+                ? scan.source === "demo"
+                  ? scan.label
+                  : `Scanner · ${scan.label}`
+                : ready
+                  ? "nothing cached yet"
+                  : "…"}
             </b>
             {scan && now > 0 && (
               <>
                 {" "}
                 · {scan.games.length} games · {ago(now - scan.fetchedAt)}
-                {now - scan.fetchedAt > CACHE_MS && <span className="text-destructive"> (old — rescan in the Scanner)</span>}
+                {now - scan.fetchedAt > CACHE_MS && (
+                  <span className="text-destructive"> (old — rescan in the Scanner)</span>
+                )}
               </>
             )}
           </span>
@@ -147,7 +196,9 @@ export function Edge() {
                 key={m}
                 onClick={() => setMode(m)}
                 className={`h-7 rounded px-2.5 text-[11px] font-bold uppercase ${
-                  mode === m ? "bg-primary text-primary-foreground" : "text-secondary-foreground hover:bg-card"
+                  mode === m
+                    ? "bg-primary text-primary-foreground"
+                    : "text-secondary-foreground hover:bg-card"
                 }`}
               >
                 {m === "best" ? "Best across books" : "One bookmaker"}
@@ -185,9 +236,11 @@ export function Edge() {
           ))}
           {data && (
             <span className="ml-auto text-muted-foreground">
-              Pool: <b className="text-foreground">{data.pool.length}</b> tightest of {data.ranked.length} markets
-              {data.fresh.started + data.fresh.stale > 0 && (
-                <> · ignored {data.fresh.started} started, {data.fresh.stale} stale</>
+              Pool: <b className="text-foreground">{data.pool.length}</b> tightest of{" "}
+              {data.ranked.length} markets
+              {data.fresh.started > 0 && <> · ignored {data.fresh.started} started</>}
+              {data.fresh.stale > 0 && (
+                <span className="text-gold"> · {data.fresh.stale} priced over 15 min ago</span>
               )}
             </span>
           )}
@@ -207,7 +260,7 @@ export function Edge() {
           <NeedsData data={data} onDemo={loadDemo} ready={ready}>
             <Panel
               title={`Value ranking · ${values.length}`}
-              hint="Expected return per K100 staked, at fair (margin-free) chances. Ties go to the combo that lands more often."
+              hint="Expected return per 100 staked, at fair (margin-free) chances. Ties go to the combo that lands more often."
             >
               <div className="flex flex-wrap items-end gap-3 border-b px-3 py-2.5">
                 <Labeled label="Legs">
@@ -251,7 +304,10 @@ export function Edge() {
                 </Labeled>
               </div>
               {values.length === 0 ? (
-                <Empty>No combos clear a {floor}% floor in this pool. Try a lower floor or another pattern.</Empty>
+                <Empty>
+                  No combos clear a {floor}% floor in this pool. Try a lower floor or another
+                  pattern.
+                </Empty>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[820px] text-[12px]">
@@ -262,13 +318,20 @@ export function Edge() {
                         <th>Uncovered</th>
                         <th className="text-right">Profit if covered</th>
                         <th className="text-right">Lands</th>
-                        <th className="text-right">EV per K100</th>
+                        <th className="text-right">EV per 100</th>
                         <th></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
                       {values.slice(0, SHOW).map((v, i) => (
-                        <ValueRowView key={v.id} rank={i + 1} row={v} games={gamesById} onLoad={load} />
+                        <ValueRowView
+                          key={v.id}
+                          rank={i + 1}
+                          row={v}
+                          games={gamesById}
+                          book={mode === "book" ? book : null}
+                          onLoad={load}
+                        />
                       ))}
                     </tbody>
                   </table>
@@ -294,13 +357,20 @@ export function Edge() {
                     const on = ladderItems.some((x) => x.game.id === p.game.id);
                     const ids = ladderItems.map((x) => x.game.id);
                     return (
-                      <label key={p.game.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-muted">
+                      <label
+                        key={p.game.id}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[12px] hover:bg-muted"
+                      >
                         <Checkbox
                           checked={on}
                           disabled={!on && ids.length >= 4}
-                          onCheckedChange={(c) => setPicked(c ? [...ids, p.game.id] : ids.filter((x) => x !== p.game.id))}
+                          onCheckedChange={(c) =>
+                            setPicked(c ? [...ids, p.game.id] : ids.filter((x) => x !== p.game.id))
+                          }
                         />
-                        <span className="min-w-0 flex-1 truncate font-medium">{g ? `${g.home} – ${g.away}` : p.game.id}</span>
+                        <span className="min-w-0 flex-1 truncate font-medium">
+                          {g ? `${g.home} – ${g.away}` : p.game.id}
+                        </span>
                         <span className="tabular-nums text-muted-foreground">{pct(p.margin)}</span>
                       </label>
                     );
@@ -310,13 +380,20 @@ export function Edge() {
               <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                 {ladder.length === 0 && <Empty>Pick at least one game.</Empty>}
                 {ladder.map((step) => (
-                  <Panel key={step.legs} title={["Singles", "Doubles", "Trebles", "Quads"][step.legs - 1]!} hint={`${step.legs}-leg · ${3 ** step.legs} scenarios each`}>
+                  <Panel
+                    key={step.legs}
+                    title={["Singles", "Doubles", "Trebles", "Quads"][step.legs - 1]!}
+                    hint={`${step.legs}-leg · ${3 ** step.legs} scenarios each`}
+                  >
                     <dl className="grid grid-cols-2 gap-x-3 gap-y-2 p-3 text-[12px]">
                       <Stat label="Combos" value={`${step.qualifying} / ${step.combos} qualify`} />
-                      <Stat label="Avg profit if covered" value={`+${step.avgProfitPct.toFixed(2)}%`} />
+                      <Stat
+                        label="Avg profit if covered"
+                        value={`+${step.avgProfitPct.toFixed(2)}%`}
+                      />
                       <Stat label="Avg chance it lands" value={pct(step.avgCoverProb)} />
                       <Stat
-                        label="Avg EV per K100"
+                        label="Avg EV per 100"
                         value={step.qualifying ? money(step.avgEv) : "—"}
                         tone={step.avgEv >= 100 ? "up" : "down"}
                       />
@@ -325,12 +402,18 @@ export function Edge() {
                       <div className="border-t bg-muted/50 px-3 py-2 text-[11px]">
                         <p className="font-bold uppercase text-secondary-foreground">Best EV</p>
                         <p className="truncate font-semibold">
-                          {step.best.items.map((it) => gamesById.get(it.game.id)?.home ?? "?").join(" / ")}
+                          {step.best.items
+                            .map((it) => gamesById.get(it.game.id)?.home ?? "?")
+                            .join(" / ")}
                         </p>
                         <p className="text-muted-foreground">
-                          {step.best.full ? "Full cover" : `Leaves ${step.best.pattern} uncovered`} · {money(step.best.evPer100)} per K100
+                          {step.best.full ? "Full cover" : `Leaves ${step.best.pattern} uncovered`}{" "}
+                          · {money(step.best.evPer100)} per 100
                         </p>
-                        <button onClick={() => load(step.best!)} className="btn-cta mt-2 h-7 px-2 text-[11px]">
+                        <button
+                          onClick={() => load(step.best!)}
+                          className="btn-cta mt-2 h-7 px-2 text-[11px]"
+                        >
                           <ArrowRightLeft className="h-3 w-3" /> Load into Calculator
                         </button>
                       </div>
@@ -356,7 +439,9 @@ export function Edge() {
                       <th>#</th>
                       <th>Game</th>
                       <th>Kickoff</th>
-                      <th className="text-right">{mode === "best" ? "Best across books" : bookName(book)}</th>
+                      <th className="text-right">
+                        {mode === "best" ? "Best across books" : bookName(book)}
+                      </th>
                       {BOOKMAKERS.map((b) => (
                         <th key={b.id} className="text-right">
                           {b.name}
@@ -366,7 +451,13 @@ export function Edge() {
                   </thead>
                   <tbody className="divide-y">
                     {data?.ranked.map((r, i) => (
-                      <MarginRow key={r.game.id} rank={i + 1} item={r} game={gamesById.get(r.game.id)} inPool={i < POOL_SIZE} />
+                      <MarginRow
+                        key={r.game.id}
+                        rank={i + 1}
+                        item={r}
+                        game={gamesById.get(r.game.id)}
+                        inPool={i < POOL_SIZE}
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -386,11 +477,18 @@ export function Edge() {
               value={money(history.actual - history.expected)}
               tone={history.actual >= history.expected ? "up" : "down"}
             />
-            <Tile label="Distance from the math" value={`${history.z >= 0 ? "+" : ""}${history.z.toFixed(2)} σ`} />
+            <Tile
+              label="Distance from the math"
+              value={`${history.z >= 0 ? "+" : ""}${history.z.toFixed(2)} σ`}
+            />
           </div>
           <p
             className={`flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-semibold shadow-card ${
-              history.verdict === "tracking" ? "bg-card" : history.verdict === "ahead" ? "bg-up/10 text-up" : "bg-down/10 text-down"
+              history.verdict === "tracking"
+                ? "bg-card"
+                : history.verdict === "ahead"
+                  ? "bg-up/10 text-up"
+                  : "bg-down/10 text-down"
             }`}
           >
             <Gauge className="h-4 w-4 shrink-0" />
@@ -403,14 +501,37 @@ export function Edge() {
           <Panel title="Cumulative returns" hint="Sample settled-bet history.">
             <div className="h-72 p-3">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={history.rows.map((r) => ({ date: r.date.slice(5), expected: Math.round(r.cumExpected), actual: Math.round(r.cumActual) }))}>
+                <LineChart
+                  data={history.rows.map((r) => ({
+                    date: r.date.slice(5),
+                    expected: Math.round(r.cumExpected),
+                    actual: Math.round(r.cumActual),
+                  }))}
+                >
                   <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
                   <XAxis dataKey="date" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} />
                   <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} width={60} />
                   <Tooltip formatter={(v: number) => money(v)} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="expected" name="Expected" stroke="var(--primary)" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
-                  <Line type="monotone" dataKey="actual" name="Actual" stroke="var(--cta)" strokeWidth={2.5} dot={{ r: 3 }} isAnimationActive={false} />
+                  <Line
+                    type="monotone"
+                    dataKey="expected"
+                    name="Expected"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    strokeDasharray="5 4"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="actual"
+                    name="Actual"
+                    stroke="var(--cta)"
+                    strokeWidth={2.5}
+                    dot={{ r: 3 }}
+                    isAnimationActive={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -432,15 +553,26 @@ export function Edge() {
                 <tbody className="divide-y">
                   {history.rows.map((r) => (
                     <tr key={r.id} className="[&>td]:px-3 [&>td]:py-1.5">
-                      <td className="tabular-nums text-muted-foreground">{fmtDay(new Date(r.date).getTime())}</td>
+                      <td className="tabular-nums text-muted-foreground">
+                        {fmtDay(new Date(r.date).getTime())}
+                      </td>
                       <td className="font-semibold">
-                        {r.title} <span className="text-[11px] font-normal text-muted-foreground">· {r.legs} legs</span>
+                        {r.title}{" "}
+                        <span className="text-[11px] font-normal text-muted-foreground">
+                          · {r.legs} legs
+                        </span>
                       </td>
                       <td className="text-right tabular-nums">{money(r.stake)}</td>
                       <td className="text-right tabular-nums">{pct(r.coverProb)}</td>
                       <td className="text-right tabular-nums">{money(r.expected)}</td>
-                      <td className={`text-right font-bold tabular-nums ${r.won ? "text-up" : "text-down"}`}>{money(r.actual)}</td>
-                      <td className={`text-right tabular-nums ${r.actual - r.expected >= 0 ? "text-up" : "text-down"}`}>
+                      <td
+                        className={`text-right font-bold tabular-nums ${r.won ? "text-up" : "text-down"}`}
+                      >
+                        {money(r.actual)}
+                      </td>
+                      <td
+                        className={`text-right tabular-nums ${r.actual - r.expected >= 0 ? "text-up" : "text-down"}`}
+                      >
                         {money(r.actual - r.expected)}
                       </td>
                     </tr>
@@ -459,13 +591,16 @@ function ValueRowView({
   rank,
   row,
   games,
+  book,
   onLoad,
 }: {
   rank: number;
   row: ValueRow;
   games: Map<string, Game>;
+  book: string | null;
   onLoad: (r: ValueRow) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const n = row.items.length;
   const sc = row.excluded === null ? null : scenariosFor(n)[row.excluded]!;
   const gs = row.items.map((it) => games.get(it.game.id));
@@ -475,7 +610,8 @@ function ValueRowView({
       <td>
         {row.items.map((it, k) => (
           <p key={it.game.id} className="truncate">
-            <b className="text-primary">{EVENT_LETTERS[k]}</b> {gs[k] ? `${gs[k]!.home} – ${gs[k]!.away}` : it.game.id}{" "}
+            <b className="text-primary">{EVENT_LETTERS[k]}</b>{" "}
+            {gs[k] ? `${gs[k]!.home} – ${gs[k]!.away}` : it.game.id}{" "}
             <span className="text-[11px] tabular-nums text-muted-foreground">
               {it.leg.odds.W.toFixed(2)} / {it.leg.odds.D.toFixed(2)} / {it.leg.odds.L.toFixed(2)}
             </span>
@@ -486,41 +622,99 @@ function ValueRowView({
         {sc ? (
           <>
             <b>{sc.join("+")}</b>
-            <p className="truncate text-[11px] text-muted-foreground">{sc.map((o, k) => outcomeText(gs[k], o)).join(" + ")}</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {sc.map((o, k) => outcomeText(gs[k], o)).join(" + ")}
+            </p>
           </>
         ) : (
-          <span className="rounded bg-cta px-1.5 py-0.5 text-[10px] font-bold uppercase text-cta-foreground">Full cover</span>
+          <span className="rounded bg-cta px-1.5 py-0.5 text-[10px] font-bold uppercase text-cta-foreground">
+            Full cover
+          </span>
         )}
       </td>
       <td className="text-right font-semibold tabular-nums">+{row.profitPct.toFixed(2)}%</td>
       <td className="text-right tabular-nums">{pct(row.coverProb)}</td>
-      <td className={`text-right font-display text-base font-black tabular-nums ${row.evPer100 >= 100 ? "text-up" : "text-down"}`}>
+      <td
+        className={`text-right font-display text-base font-black tabular-nums ${row.evPer100 >= 100 ? "text-up" : "text-down"}`}
+      >
         {money(row.evPer100)}
       </td>
       <td className="text-right">
-        <button onClick={() => onLoad(row)} className="btn-cta h-7 px-2 text-[11px]" aria-label={`Load combo ${rank} into Calculator`}>
-          <ArrowRightLeft className="h-3 w-3" /> Load
-        </button>
+        <div className="flex justify-end gap-1.5">
+          <button
+            onClick={() => setOpen(true)}
+            className="flex h-7 items-center gap-1 rounded border border-input px-2 text-[11px] font-bold uppercase text-secondary-foreground hover:bg-muted"
+            aria-label={`Preview combo ${rank}`}
+          >
+            <Eye className="h-3 w-3" /> Preview
+          </button>
+          <button
+            onClick={() => onLoad(row)}
+            className="btn-cta h-7 px-2 text-[11px]"
+            aria-label={`Load combo ${rank} into Calculator`}
+          >
+            <ArrowRightLeft className="h-3 w-3" /> Load
+          </button>
+        </div>
+        <PreviewDialog
+          open={open}
+          onOpenChange={setOpen}
+          result={{
+            legs: row.items.map((it) => it.leg),
+            excluded: row.excluded,
+            book,
+          }}
+          legGames={gs}
+          stats={
+            <div className="grid grid-cols-3 gap-2">
+              <Tile
+                label="EV per 100"
+                value={money(row.evPer100)}
+                tone={row.evPer100 >= 100 ? "up" : "down"}
+              />
+              <Tile label="Chance it lands" value={pct(row.coverProb)} />
+              <Tile label="Pays when it hits" value={`+${row.profitPct.toFixed(1)}%`} />
+            </div>
+          }
+        />
       </td>
     </tr>
   );
 }
 
-function MarginRow({ rank, item, game, inPool }: { rank: number; item: PoolItem; game: Game | undefined; inPool: boolean }) {
+function MarginRow({
+  rank,
+  item,
+  game,
+  inPool,
+}: {
+  rank: number;
+  item: PoolItem;
+  game: Game | undefined;
+  inPool: boolean;
+}) {
   return (
     <tr className={`[&>td]:px-3 [&>td]:py-1.5 ${inPool ? "" : "text-muted-foreground"}`}>
       <td className="tabular-nums">{rank}</td>
       <td className="font-semibold">
         {game ? `${game.home} – ${game.away}` : item.game.id}
-        {game && <span className="ml-1 text-[11px] font-normal text-muted-foreground">{game.flag} {game.league}</span>}
+        {game && (
+          <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+            {game.flag} {game.league}
+          </span>
+        )}
         {inPool && (
-          <span className="ml-2 rounded bg-primary/10 px-1.5 py-px text-[9px] font-bold uppercase text-primary">Pool</span>
+          <span className="ml-2 rounded bg-primary/10 px-1.5 py-px text-[9px] font-bold uppercase text-primary">
+            Pool
+          </span>
         )}
       </td>
       <td className="tabular-nums">
         {fmtDay(item.game.kickoff)} {hhmm(item.game.kickoff)}
       </td>
-      <td className={`text-right font-bold tabular-nums ${item.margin < 0 ? "text-up" : ""}`}>{pct(item.margin, 2)}</td>
+      <td className={`text-right font-bold tabular-nums ${item.margin < 0 ? "text-up" : ""}`}>
+        {pct(item.margin, 2)}
+      </td>
       {BOOKMAKERS.map((b) => {
         const q = item.game.quotes[b.id];
         return (
@@ -570,11 +764,21 @@ function Tab({ value, icon: Icon, label }: { value: string; icon: typeof Trophy;
   );
 }
 
-function Panel({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="overflow-hidden rounded-md bg-card shadow-card">
       <div className="flex flex-wrap items-baseline gap-x-2 bg-panel-head px-3 py-2">
-        <h2 className="text-[11px] font-bold uppercase tracking-wide text-secondary-foreground">{title}</h2>
+        <h2 className="text-[11px] font-bold uppercase tracking-wide text-secondary-foreground">
+          {title}
+        </h2>
         {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
       </div>
       {children}
@@ -585,7 +789,9 @@ function Panel({ title, hint, children }: { title: string; hint?: string; childr
 function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <span className="block text-[11px] font-bold uppercase text-secondary-foreground">{label}</span>
+      <span className="block text-[11px] font-bold uppercase text-secondary-foreground">
+        {label}
+      </span>
       {children}
     </div>
   );
@@ -595,7 +801,11 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "up
   return (
     <div>
       <dt className="text-[10px] font-bold uppercase text-muted-foreground">{label}</dt>
-      <dd className={`font-bold tabular-nums ${tone === "up" ? "text-up" : tone === "down" ? "text-down" : ""}`}>{value}</dd>
+      <dd
+        className={`font-bold tabular-nums ${tone === "up" ? "text-up" : tone === "down" ? "text-down" : ""}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
@@ -604,7 +814,9 @@ function Tile({ label, value, tone }: { label: string; value: string; tone?: "up
   return (
     <div className="rounded-md bg-card px-3 py-2.5 shadow-card">
       <p className="text-[10px] font-bold uppercase text-muted-foreground">{label}</p>
-      <p className={`font-display text-xl font-black tabular-nums ${tone === "up" ? "text-up" : tone === "down" ? "text-down" : ""}`}>
+      <p
+        className={`font-display text-xl font-black tabular-nums ${tone === "up" ? "text-up" : tone === "down" ? "text-down" : ""}`}
+      >
         {value}
       </p>
     </div>

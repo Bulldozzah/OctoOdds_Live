@@ -18,7 +18,7 @@ export type AuthSwitchProps = {
 
 /**
  * Sliding sign-in / sign-up card, replicated from OctoOdds and restyled with
- * the OctoOdds sportsbook palette (header blue panel, green call-to-action).
+ * the OctoOdds sportsbook palette (header blue panel, teal call-to-action).
  */
 export function AuthSwitch({
   onSignIn,

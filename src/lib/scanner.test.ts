@@ -114,6 +114,32 @@ describe("pool, freshness and filters", () => {
     expect(freshGames([game], fetchedAt + 2 * 3600_000, ["a"]).stale).toBe(1);
   });
 
+  it("keeps stale quotes when keepStale is set, still flagging all-stale games", () => {
+    const now = 100_000_000;
+    const game = {
+      fetchedAt: now - 1000,
+      id: "g",
+      kickoff: now + 1,
+      quotes: {
+        a: { W: 2, D: 3, L: 4, updatedAt: now - 16 * 60000 },
+        b: { W: 2.1, D: 3.1, L: 4.1, updatedAt: now - 2000 },
+      },
+    };
+    const mixed = freshGames([game], now, ["a", "b"], { keepStale: true });
+    expect(mixed.games).toHaveLength(1);
+    expect(Object.keys(mixed.games[0]!.quotes)).toEqual(["a", "b"]);
+    expect(mixed.stale).toBe(0);
+
+    const allStale = freshGames(
+      [{ ...game, quotes: { a: game.quotes.a } }],
+      now,
+      ["a"],
+      { keepStale: true },
+    );
+    expect(allStale.games).toHaveLength(1);
+    expect(allStale.stale).toBe(1);
+  });
+
   it("never hides full covers with the uncovered-scenario filter", () => {
     const rows = [
       { full: true, pattern: null },

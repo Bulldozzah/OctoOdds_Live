@@ -1,7 +1,5 @@
-import { CURRENCY } from "@/lib/sample-data";
-
 export const money = (n: number) =>
-  `${n < 0 ? "−" : ""}${CURRENCY}${Math.abs(n).toLocaleString("en-US", {
+  `${n < 0 ? "−" : ""}${Math.abs(n).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;

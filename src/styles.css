@@ -6,7 +6,7 @@
 
 /*
  * Sportsbook design system — deep sportsbook blue, light steel background,
- * bright green call-to-action, compact odds buttons.
+ * bright teal call-to-action, compact odds buttons.
  */
 
 @theme inline {
@@ -84,9 +84,9 @@
   --header-foreground: oklch(0.99 0 0);
   --header-muted: oklch(0.82 0.05 245);
   --nav: oklch(0.37 0.1 251);
-  --cta: oklch(0.72 0.18 135);
-  --cta-hover: oklch(0.66 0.18 135);
-  --cta-foreground: oklch(0.99 0 0);
+  --cta: oklch(0.8 0.1 192);
+  --cta-hover: oklch(0.74 0.1 192);
+  --cta-foreground: oklch(0.27 0.05 250);
   --odd: oklch(0.95 0.014 245);
   --odd-hover: oklch(0.9 0.03 245);
   --odd-foreground: oklch(0.36 0.1 250);
@@ -145,7 +145,9 @@
   text-transform: uppercase;
   letter-spacing: 0.02em;
   box-shadow: var(--shadow-cta);
-  transition: background-color 150ms ease, transform 150ms ease;
+  transition:
+    background-color 150ms ease,
+    transform 150ms ease;
   &:hover {
     background-color: var(--cta-hover);
   }
@@ -189,7 +191,9 @@
   font-weight: 700;
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
   &:hover {
     background-color: var(--odd-hover);
   }

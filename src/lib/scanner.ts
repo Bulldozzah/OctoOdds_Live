@@ -137,8 +137,17 @@ export const POOL_CAP: Record<number, number> = { 1: Infinity, 2: Infinity, 3: 2
  */
 export const STALE_MS = 15 * 60 * 1000;
 
-/** Drops started games and stale quotes; keeps only the allowed books. */
-export function freshGames<G extends QuotedGame>(games: G[], now: number, books: string[]) {
+/**
+ * Drops started games and stale quotes; keeps only the allowed books.
+ * With `keepStale`, stale quotes are kept instead so the last scan stays on
+ * screen until the next one — callers must surface the `stale` count.
+ */
+export function freshGames<G extends QuotedGame>(
+  games: G[],
+  now: number,
+  books: string[],
+  opts: { keepStale?: boolean } = {},
+) {
   let started = 0;
   let stale = 0;
   const kept: G[] = [];
@@ -150,11 +159,9 @@ export function freshGames<G extends QuotedGame>(games: G[], now: number, books:
       continue;
     }
     const fresh = allowed.filter(([, q]) => now - q!.updatedAt <= STALE_MS);
-    if (fresh.length === 0) {
-      stale++;
-      continue;
-    }
-    kept.push({ ...g, quotes: Object.fromEntries(fresh) });
+    if (fresh.length === 0) stale++;
+    if (fresh.length === 0 && !opts.keepStale) continue;
+    kept.push({ ...g, quotes: Object.fromEntries(opts.keepStale ? allowed : fresh) });
   }
   return { games: kept, started, stale };
 }

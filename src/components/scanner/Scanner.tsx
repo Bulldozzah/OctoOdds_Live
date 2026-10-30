@@ -187,7 +187,7 @@ export function Scanner() {
   const computed = useMemo(() => {
     if (!s.scan || !now) return null;
     const allowed = booksKey.split(",");
-    const fresh = freshGames(s.scan.games, now, allowed);
+    const fresh = freshGames(s.scan.games, now, allowed, { keepStale: true });
     let games = fresh.games;
     if (s.timeFrom || s.timeTo) {
       games = games.filter((g) => {
@@ -835,11 +835,16 @@ export function Scanner() {
                 <span className="max-w-full truncate">
                   Books: {books.map((b) => bookName(b)).join(", ") || "—"}
                 </span>
-                {computed.fresh.started + computed.fresh.stale > 0 && (
+                {computed.fresh.started > 0 && (
                   <span className="flex items-center gap-1">
                     <AlertTriangle className="h-3.5 w-3.5" />
-                    Ignored {computed.fresh.started} started · {computed.fresh.stale} with stale
-                    quotes
+                    Ignored {computed.fresh.started} started
+                  </span>
+                )}
+                {computed.fresh.stale > 0 && (
+                  <span className="flex items-center gap-1 text-gold">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    {computed.fresh.stale} priced over 15 min ago — rescan before placing
                   </span>
                 )}
                 {scan.failed && scan.failed.length > 0 && (
@@ -878,7 +883,7 @@ export function Scanner() {
               {results.length === 0 ? (
                 <p className="rounded-md bg-card px-4 py-10 text-center text-sm text-muted-foreground shadow-card">
                   {computed.games.length === 0 && scan.games.length > 0
-                    ? "This scan has aged out — its fixtures have kicked off or their quotes are over 15 minutes old. Scan again for current prices."
+                    ? "Every fixture in this scan has kicked off, or none of the selected books price them. Scan again for current games."
                     : computed.games.length < s.combine
                       ? `Only ${computed.games.length} game${computed.games.length === 1 ? "" : "s"} available — ${s.combine}-game combos need at least ${s.combine}.`
                       : `No combos clear ${s.minProfit || 0}% with these filters. Try a lower minimum profit, fewer games per combo, best odds across books, or more leagues.`}

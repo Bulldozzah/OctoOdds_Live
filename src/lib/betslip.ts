@@ -48,7 +48,7 @@ export function singlesTotals(slip: Selection[], stakePerBet: number) {
 
 export function stakeError(stake: number): string | null {
   if (!Number.isFinite(stake) || stake <= 0) return "Enter a stake";
-  if (stake < MIN_STAKE) return `Minimum stake is K${MIN_STAKE}`;
-  if (stake > MAX_STAKE) return `Maximum stake is K${MAX_STAKE.toLocaleString()}`;
+  if (stake < MIN_STAKE) return `Minimum stake is ${MIN_STAKE}`;
+  if (stake > MAX_STAKE) return `Maximum stake is ${MAX_STAKE.toLocaleString()}`;
   return null;
 }

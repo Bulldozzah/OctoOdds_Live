@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Eraser,
   FileDown,
   FolderOpen,
   Loader2,
-  Minus,
-  Plus,
   RotateCcw,
   Save,
-  Scale,
-  Target,
   Trash2,
-  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -34,7 +33,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CURRENCY } from "@/lib/sample-data";
 import { useAuth } from "@/lib/auth";
 import { deletePlan, fetchPlans, insertPlan, updatePlan } from "@/lib/plans-db";
 import {
@@ -78,12 +76,11 @@ const num = (s: string) => {
 };
 const clean = (v: string) => v.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
 const money = (n: number) =>
-  `${n < 0 ? "−" : ""}${CURRENCY}${Math.abs(n).toLocaleString("en-US", {
+  `${n < 0 ? "−" : ""}${Math.abs(n).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 const WORD: Record<Outcome, string> = { W: "win", D: "draw", L: "lose" };
-const WIN_STEP = 10;
 
 const initialTabs = (): Record<number, TabState> => ({
   1: defaultTab(1),
@@ -232,6 +229,16 @@ export function CoverCalculator() {
   const maxW = maxWin(calcRows, budget);
   const winTarget = num(tab.winTarget);
   const overLimit = winTarget > maxW;
+  // OctoOdds' winDiff: requested win vs the budget — or vs the stake the
+  // balance would actually need when no budget is set.
+  const winDiff = useMemo(() => {
+    const w = winTarget;
+    if (!(w > 0)) return null;
+    if (budget > 0) return ((w - budget) / budget) * 100;
+    const sumInv = calcRows.filter(isStakeable).reduce((a, r) => a + 1 / r.odds, 0);
+    if (!(sumInv > 0)) return null;
+    return ((w - w * sumInv) / (w * sumInv)) * 100;
+  }, [winTarget, budget, calcRows]);
   const hasStakeable = calcRows.some(isStakeable);
 
   const names = (events: EventDraft[]) =>
@@ -302,7 +309,7 @@ export function CoverCalculator() {
     setStakes(balanceWinStakes(calcRows, winTarget));
   };
   const stepWin = (dir: 1 | -1) => {
-    const next = round2(Math.max(0, (winTarget || maxW) + dir * WIN_STEP));
+    const next = round2(Math.max(0, (winTarget || maxW) + dir));
     if (dir === 1 && next > maxW) {
       setLimitHit(true);
       update(() => ({ winTarget: maxW.toFixed(2) }));
@@ -488,155 +495,92 @@ export function CoverCalculator() {
   };
 
   return (
-    <main className="mx-auto grid max-w-[1600px] gap-3 px-2 py-3 sm:px-3 xl:grid-cols-[1fr_320px]">
-      <div className="min-w-0 space-y-3">
-        {/* Setup */}
-        <section className="overflow-hidden rounded-md bg-card shadow-card">
-          <div className="flex flex-wrap items-center gap-3 bg-gradient-header px-4 py-3 text-header-foreground">
-            <div className="mr-auto">
-              <h1 className="font-display text-xl font-black uppercase italic tracking-tight">
-                Cover <span className="text-cta">calculator</span>
-              </h1>
-              <p className="text-xs text-header-muted">
-                Spread one budget across every outcome of 1–4 events.
-              </p>
-            </div>
-            <input
-              value={betTitle}
-              onChange={(e) => setBetTitle(e.target.value)}
-              placeholder="Bet name"
-              aria-label="Bet name"
-              className="h-9 w-44 rounded-md bg-header-deep/70 px-3 text-xs text-header-foreground outline-none placeholder:text-header-muted focus:ring-2 focus:ring-cta"
-            />
-            <button
-              onClick={() => void save()}
-              disabled={saving}
-              className="btn-cta h-9 px-3 text-xs disabled:opacity-60"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {editing ? "Update" : "Save"}
-            </button>
-            <button onClick={exportPdf} className="btn-ghost-header h-9 px-3 text-xs">
-              <FileDown className="h-4 w-4" /> Export PDF
-            </button>
-            <button onClick={reset} className="btn-ghost-header h-9 px-3 text-xs">
-              <RotateCcw className="h-4 w-4" /> Reset
-            </button>
+    <main className="mx-auto max-w-[1600px] space-y-3 px-2 py-3 sm:px-3">
+      {/* Setup */}
+      <section className="overflow-hidden rounded-md bg-card shadow-card">
+        <div className="flex flex-wrap items-center gap-3 bg-gradient-header px-4 py-3 text-header-foreground">
+          <div className="mr-auto">
+            <h1 className="font-display text-xl font-black uppercase italic tracking-tight">
+              Cover <span className="text-cta">calculator</span>
+            </h1>
+            <p className="text-xs text-header-muted">
+              Spread one budget across every outcome of 1–4 events.
+            </p>
           </div>
-          <div className="grid gap-3 p-3 sm:grid-cols-3">
-            <Field label="Teams">
-              <Select
-                value={String(count)}
-                onValueChange={(v) => {
-                  setCount(Number(v));
-                  // Row indices mean something different on another tab.
-                  setSacrifice("best");
-                }}
-              >
-                <SelectTrigger className="h-10 bg-card font-semibold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4].map((n) => (
-                    <SelectItem key={n} value={String(n)}>
-                      {n} {n === 1 ? "event" : "events"} · {3 ** n} scenarios
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label={`Target stake (${CURRENCY})`}>
-              <NumInput value={tab.budget} onChange={(v) => update(() => ({ budget: v }))} />
-            </Field>
-            <Field label="Tax on winnings (%)">
-              <NumInput value={tab.tax} onChange={(v) => update(() => ({ tax: v }))} />
-            </Field>
-          </div>
-        </section>
+          <input
+            value={betTitle}
+            onChange={(e) => setBetTitle(e.target.value)}
+            placeholder="Bet name"
+            aria-label="Bet name"
+            className="h-9 w-44 rounded-md bg-header-deep/70 px-3 text-xs text-header-foreground outline-none placeholder:text-header-muted focus:ring-2 focus:ring-cta"
+          />
+          <button
+            onClick={() => void save()}
+            disabled={saving}
+            className="btn-cta h-9 px-3 text-xs disabled:opacity-60"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {editing ? "Update" : "Save"}
+          </button>
+          <button onClick={exportPdf} className="btn-ghost-header h-9 px-3 text-xs">
+            <FileDown className="h-4 w-4" /> Export PDF
+          </button>
+          <button onClick={reset} className="btn-ghost-header h-9 px-3 text-xs">
+            <RotateCcw className="h-4 w-4" /> Reset
+          </button>
+        </div>
+      </section>
 
-        {/* Teams & odds */}
-        <section className="overflow-hidden rounded-md bg-card shadow-card">
-          <PanelHead title="Teams & odds">
-            <button
-              onClick={clearOdds}
-              className="flex h-7 items-center gap-1 rounded px-2 text-xs font-semibold text-secondary-foreground hover:bg-card"
-            >
-              <Eraser className="h-3.5 w-3.5" /> Clear odds
-            </button>
-          </PanelHead>
-          <div className="grid gap-2 p-3 md:grid-cols-2">
-            {tab.events.map((e, k) => (
-              <div key={k} className="space-y-2 rounded-md border bg-muted/50 p-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded bg-primary text-xs font-black text-primary-foreground">
-                    {EVENT_LETTERS[k]}
+      <div className="grid gap-3 lg:grid-cols-[380px_1fr] xl:grid-cols-[380px_1fr_320px]">
+        {/* Left panel */}
+        <aside className="min-w-0 space-y-3">
+          {/* Setup */}
+          <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
+            <div className="flex flex-wrap items-end gap-2">
+              <Field label="Teams" className="min-w-0 flex-1">
+                <Select
+                  value={String(count)}
+                  onValueChange={(v) => {
+                    setCount(Number(v));
+                    // Row indices mean something different on another tab.
+                    setSacrifice("best");
+                  }}
+                >
+                  <SelectTrigger className="h-9 bg-card text-xs font-semibold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4].map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n} {n === 1 ? "event" : "events"} · {3 ** n} scenarios
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Stake" className="w-24">
+                <NumInput value={tab.budget} onChange={(v) => update(() => ({ budget: v }))} />
+              </Field>
+              <Field label="Tax %" className="w-16">
+                <NumInput value={tab.tax} onChange={(v) => update(() => ({ tax: v }))} />
+              </Field>
+            </div>
+          </div>
+
+          {/* Balance win */}
+          <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold uppercase text-secondary-foreground">
+                Balance win
+                {maxW > 0 && (
+                  <span className="font-normal normal-case text-muted-foreground">
+                    {" "}
+                    · max <b className="text-down">{money(Math.floor(maxW * 100) / 100)}</b>
                   </span>
-                  <input
-                    value={e.name}
-                    onChange={(ev) => setEvent(k, { name: ev.target.value })}
-                    placeholder="Team or player"
-                    className="h-8 min-w-0 flex-1 rounded border border-input bg-card px-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-                {e.matchup && (
-                  <p className="truncate text-[11px] text-muted-foreground">{e.matchup}</p>
                 )}
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(["W", "D", "L"] as const).map((o, oi) => (
-                    <input
-                      key={o}
-                      aria-label={`${EVENT_LETTERS[k]} ${WORD[o]} odds`}
-                      inputMode="decimal"
-                      placeholder={o}
-                      // 1 event: the input IS the scenario row's odds, exactly
-                      // like OctoOdds — raw text, no rounding.
-                      value={count === 1 ? (tab.rows[oi]?.odds ?? "") : e[o]}
-                      onChange={(ev) => {
-                        const v = clean(ev.target.value);
-                        if (count === 1)
-                          update((t) => ({
-                            events: t.events.map((x, j) => (j === k ? { ...x, [o]: v } : x)),
-                            rows: t.rows.map((r, j) => (j === oi ? { ...r, odds: v } : r)),
-                          }));
-                        else setEvent(k, { [o]: v });
-                      }}
-                      className="odd-btn h-9 w-full border border-input text-center outline-none placeholder:font-black placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-ring"
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Stake tools */}
-        <section className="overflow-hidden rounded-md bg-card shadow-card">
-          <PanelHead title="Fill stakes" />
-          <div className="grid gap-3 p-3 lg:grid-cols-[auto_1fr]">
-            <div className="flex flex-wrap gap-2">
-              <ToolButton
-                icon={Scale}
-                label="Balance"
-                hint="Same profit on every row"
-                onClick={balance}
-              />
-              <ToolButton
-                icon={Zap}
-                label="Turbo"
-                hint="Money back on unlikely rows"
-                onClick={turbo}
-              />
-            </div>
-            <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                <span className="text-xs font-bold uppercase text-secondary-foreground">
-                  Balance win
-                </span>
-                <div className="flex items-center">
-                  <StepButton label="Lower total win" onClick={() => stepWin(-1)}>
-                    <Minus className="h-3.5 w-3.5" />
-                  </StepButton>
+              </span>
+              <div className="space-y-1">
+                <div className="relative">
                   <input
                     inputMode="decimal"
                     aria-label="Total win"
@@ -644,394 +588,496 @@ export function CoverCalculator() {
                     value={tab.winTarget}
                     onChange={(ev) => {
                       setLimitHit(false);
-                      update(() => ({ winTarget: clean(ev.target.value) }));
+                      const v = clean(ev.target.value);
+                      update(() => ({
+                        winTarget:
+                          maxW > 0 && num(v) > maxW ? (Math.floor(maxW * 100) / 100).toFixed(2) : v,
+                      }));
                     }}
-                    className="h-8 w-28 border-y border-input bg-card px-2 text-center text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  <StepButton label="Raise total win" onClick={() => stepWin(1)}>
-                    <Plus className="h-3.5 w-3.5" />
-                  </StepButton>
-                </div>
-                {winTarget > 0 && (
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
-                      overLimit ? "bg-down/15 text-down" : "bg-up/15 text-up"
+                    className={`h-9 w-36 rounded-md border border-input bg-card pl-2 pr-16 text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring ${
+                      overLimit && winTarget > 0 ? "border-destructive text-destructive" : ""
                     }`}
-                  >
-                    {overLimit ? "▲" : "▼"} {money(Math.abs(winTarget - maxW))}{" "}
-                    {overLimit ? "over budget" : "under max"}
-                  </span>
-                )}
-                <button onClick={applyWin} className="btn-cta ml-auto h-8 px-3 text-xs">
-                  Apply
-                </button>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Max win with this budget: <b className="text-foreground">{money(maxW)}</b>
-              </p>
-              {(limitHit || overLimit) && winTarget > 0 && (
-                <p className="flex items-center gap-1 text-xs font-semibold text-destructive">
-                  <AlertTriangle className="h-3.5 w-3.5" /> Limit reached — the budget can't cover a
-                  bigger win.
-                </p>
-              )}
-            </div>
-            <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5 lg:col-span-2">
-              <p className="text-xs font-bold uppercase text-secondary-foreground">
-                Scenario to give up{" "}
-                <span className="font-normal normal-case text-muted-foreground">
-                  (the rest share the budget for equal profit)
-                </span>
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Select
-                  value={sacrifice}
-                  onValueChange={setSacrifice}
-                  disabled={giveUps.length === 0}
-                >
-                  <SelectTrigger className="h-9 min-w-0 flex-1 bg-card text-xs font-semibold">
-                    <SelectValue placeholder="Enter a budget and odds first" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bestPlan && bestPlan.index !== null && (
-                      <SelectItem value="best" className="text-xs">
-                        ★ Best · {scenarioLabel(scenarios[bestPlan.index]!)} ·{" "}
-                        {signedPct(bestPlan.profitPct)}
-                      </SelectItem>
-                    )}
-                    {coverAll && (
-                      <SelectItem value="all" className="text-xs">
-                        Give up nothing · cover {coverAll.coveredCount} ·{" "}
-                        {signedPct(coverAll.profitPct)}
-                      </SelectItem>
-                    )}
-                    {dropPlans.map((g) => (
-                      <SelectItem key={g.index} value={String(g.index)} className="text-xs">
-                        {scenarioLabel(scenarios[g.index!]!)} · {signedPct(g.profitPct)} ·{" "}
-                        {describe(g.index!)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <button
-                  onClick={calculateCover}
-                  disabled={!chosenPlan}
-                  className="btn-cta h-9 px-3 text-xs disabled:opacity-50"
-                >
-                  {chosenPlan
-                    ? `Calculate — cover ${chosenPlan.coveredCount} of ${scenarios.length}`
-                    : "Calculate"}
-                </button>
-              </div>
-              {chosenPlan && chosenPlan.profitPct < 0 && (
-                <p className="text-[11px] font-semibold text-destructive">
-                  This plan loses {signedPct(chosenPlan.profitPct)} on every covered scenario.
-                  {bestPlan && bestPlan.index !== null && bestPlan.profitPct > 0
-                    ? ` The best available is ${scenarioLabel(scenarios[bestPlan.index]!)} at ${signedPct(bestPlan.profitPct)}.`
-                    : " No give-up scenario turns a profit at these odds."}
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Scenario table */}
-        <section className="overflow-hidden rounded-md bg-card shadow-card">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 bg-gradient-header px-3 py-2.5 text-header-foreground">
-            <h2 className="font-display text-sm font-bold uppercase tracking-wide">
-              Scenarios · {scenarios.length}
-            </h2>
-            <span className="ml-auto text-xs text-header-muted">
-              Total staked{" "}
-              <b className="text-sm text-header-foreground tabular-nums">
-                {money(result.totalStaked)}
-              </b>
-            </span>
-            <span className="text-xs text-header-muted">
-              Remaining budget{" "}
-              <b
-                className={`text-sm tabular-nums ${result.remaining < 0 ? "text-live" : "text-cta"}`}
-              >
-                {money(result.remaining)}
-              </b>
-            </span>
-          </div>
-          <div className="max-h-[70vh] overflow-auto">
-            <table className="w-full min-w-[860px] text-[12px]">
-              <thead className="sticky top-0 z-10 bg-panel-head text-[10px] font-bold uppercase text-secondary-foreground">
-                <tr className="[&>th]:px-2 [&>th]:py-2 [&>th]:text-left">
-                  <th>#</th>
-                  <th>Scenario</th>
-                  <th>Odds</th>
-                  <th>Stake</th>
-                  <th>Net payout</th>
-                  <th>Profit</th>
-                  <th></th>
-                  <th>Min to cover</th>
-                  <th className="text-center">Unlikely</th>
-                  <th className="text-center">Exclude</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {result.rows.map((r, i) => {
-                  const row = tab.rows[i] ?? emptyRow();
-                  return (
-                    <tr
-                      key={i}
-                      className={`[&>td]:px-2 [&>td]:py-1.5 ${row.excluded ? "bg-muted/60 opacity-50" : "hover:bg-muted/40"}`}
-                    >
-                      <td className="text-muted-foreground tabular-nums">{i + 1}</td>
-                      <td>
-                        <p className="font-bold text-primary">{scenarioLabel(scenarios[i]!)}</p>
-                        <p className="max-w-64 truncate text-[11px] text-muted-foreground">
-                          {describe(i)}
-                        </p>
-                      </td>
-                      <td>
-                        <input
-                          inputMode="decimal"
-                          aria-label={`Odds for ${scenarioLabel(scenarios[i]!)}`}
-                          value={row.odds}
-                          onChange={(ev) => setRow(i, { odds: clean(ev.target.value) })}
-                          className="h-8 w-20 rounded border border-input bg-card px-2 text-right font-bold tabular-nums outline-none focus:ring-2 focus:ring-ring"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          inputMode="decimal"
-                          aria-label={`Stake for ${scenarioLabel(scenarios[i]!)}`}
-                          disabled={row.excluded}
-                          value={row.stake}
-                          placeholder="0.00"
-                          onChange={(ev) => setRow(i, { stake: clean(ev.target.value) })}
-                          className="h-8 w-24 rounded border border-input bg-card px-2 text-right font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring"
-                        />
-                      </td>
-                      <td className="tabular-nums">{money(r.net)}</td>
-                      <td
-                        className={`font-bold tabular-nums ${r.profit >= 0 ? "text-up" : "text-down"}`}
+                  />
+                  <div className="absolute inset-y-0 right-1 flex items-center gap-1">
+                    {winDiff !== null && (
+                      <span
+                        className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                          winDiff >= 0 ? "bg-up/15 text-up" : "bg-down/15 text-down"
+                        }`}
+                        title="Difference between your budget and the requested Total win"
                       >
-                        {r.profit >= 0 ? "+" : ""}
-                        {money(r.profit)}
-                        <span className="ml-1 text-[10px] font-semibold opacity-80">
-                          {r.gross > 0 ? `${r.profitPct.toFixed(1)}%` : "—"}
-                        </span>
-                      </td>
-                      <td className="text-center text-sm">
-                        {r.covered ? (
-                          <span className="text-up" title="Covered">
-                            ▲
-                          </span>
+                        {winDiff >= 0 ? (
+                          <ArrowUp className="h-3 w-3" />
                         ) : (
-                          <span className="text-down" title="Loss">
-                            ▼
-                          </span>
+                          <ArrowDown className="h-3 w-3" />
                         )}
-                      </td>
-                      <td>
-                        {r.covered ? (
-                          <span className="text-muted-foreground">—</span>
-                        ) : r.minToCover === null ? (
-                          <span
-                            className="text-[11px] text-muted-foreground"
-                            title="Odds ≤ 1 can never cover the stake"
-                          >
-                            n/a
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() =>
-                              setRow(i, {
-                                stake: String(Math.ceil((r.stake + r.minToCover!) * 100) / 100),
-                              })
-                            }
-                            title={
-                              r.canAffordCover
-                                ? `Click to stake +${money(r.minToCover)} (within Remaining)`
-                                : `Needs +${money(r.minToCover)} — exceeds Remaining`
-                            }
-                            className={`h-7 rounded border px-2 text-[11px] font-bold ${
-                              r.canAffordCover
-                                ? "border-cta/40 bg-cta/15 text-up hover:bg-cta/25"
-                                : "border-destructive/40 text-destructive hover:bg-destructive/10"
-                            }`}
-                          >
-                            +{money(r.minToCover)}
-                          </button>
-                        )}
-                      </td>
-                      <td className="text-center">
-                        <Checkbox
-                          aria-label="Unlikely"
-                          checked={row.unlikely}
-                          disabled={row.excluded}
-                          onCheckedChange={(c) => setRow(i, { unlikely: c === true })}
-                        />
-                      </td>
-                      <td className="text-center">
-                        <Checkbox
-                          aria-label="Exclude"
-                          checked={row.excluded}
-                          onCheckedChange={(c) =>
-                            setRow(
-                              i,
-                              c === true
-                                ? { excluded: true, stake: "", unlikely: false }
-                                : { excluded: false },
-                            )
-                          }
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-
-      {/* Side panel */}
-      <aside className="space-y-3 xl:sticky xl:top-[8.5rem] xl:self-start">
-        {exposure.length > 0 && (
-          <section className="rounded-md border border-gold bg-gold/15 p-3 text-[12px] shadow-card">
-            <p className="mb-1.5 flex items-center gap-1.5 font-bold uppercase text-secondary-foreground">
-              <AlertTriangle className="h-4 w-4 text-gold" /> Exposure warning
+                        {Math.abs(winDiff).toFixed(0)}%
+                      </span>
+                    )}
+                    <div className="flex flex-col">
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-label="Increase total win"
+                        onClick={() => stepWin(1)}
+                        disabled={maxW > 0 && winTarget >= maxW - 1e-9}
+                        className="text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-label="Decrease total win"
+                        onClick={() => stepWin(-1)}
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button onClick={applyWin} className="btn-cta ml-auto h-9 w-24 shrink-0 text-xs">
+                Apply
+              </button>
+            </div>
+            <p className="flex items-baseline justify-end gap-x-4 text-sm font-semibold text-muted-foreground">
+              <span>
+                Total staked{" "}
+                <b className="font-display text-lg font-black tabular-nums text-down">
+                  {money(result.totalStaked)}
+                </b>
+              </span>
+              <span>
+                Remaining{" "}
+                <b className="font-display text-lg font-black tabular-nums text-down">
+                  {money(result.remaining)}
+                </b>
+              </span>
             </p>
-            <ul className="space-y-1">
-              {exposure.map((x) => (
-                <li key={x.name}>
-                  <b>{x.name}</b> is already in {x.plans.map((p) => `“${p}”`).join(", ")}.
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section className="overflow-hidden rounded-md bg-card shadow-card">
-          <div className="flex items-center gap-2 bg-gradient-header px-3 py-2.5 text-header-foreground">
-            <h2 className="font-display text-sm font-bold uppercase tracking-wide">
-              {side === "plans" ? "My plans" : "Scan results"}
-            </h2>
-            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-cta px-1 text-[10px] font-bold text-cta-foreground">
-              {side === "plans" ? plans.length : (scanResults?.results.length ?? 0)}
-            </span>
-            <Select value={side} onValueChange={setSide}>
-              <SelectTrigger className="ml-auto h-7 w-36 border-header-foreground/20 bg-header-deep/60 text-[11px] font-semibold text-header-foreground">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="plans" className="text-xs">
-                  My plans
-                </SelectItem>
-                {[1, 2, 3, 4].map((n) => (
-                  <SelectItem key={n} value={String(n)} className="text-xs">
-                    Scan · {n} {n === 1 ? "game" : "games"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {(limitHit || overLimit) && winTarget > 0 && (
+              <p className="flex items-center gap-1 text-xs font-semibold text-destructive">
+                <AlertTriangle className="h-3.5 w-3.5" /> Limit reached — the budget can't cover a
+                bigger win.
+              </p>
+            )}
           </div>
-          {side !== "plans" ? (
-            !scanResults || scanResults.results.length === 0 ? (
+
+          {/* Scenario to give up */}
+          <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
+            <p className="text-xs font-bold uppercase text-secondary-foreground">
+              Scenario to give up{" "}
+              <span className="font-normal normal-case text-muted-foreground">
+                (the rest share the budget for equal profit)
+              </span>
+            </p>
+            <div className="flex gap-2">
+              <Select
+                value={sacrifice}
+                onValueChange={setSacrifice}
+                disabled={giveUps.length === 0}
+              >
+                <SelectTrigger className="h-9 min-w-0 flex-1 bg-card text-xs font-semibold">
+                  <SelectValue placeholder="Enter a budget and odds first" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bestPlan && bestPlan.index !== null && (
+                    <SelectItem value="best" className="text-xs">
+                      ★ Best · {scenarioLabel(scenarios[bestPlan.index]!)} ·{" "}
+                      {signedPct(bestPlan.profitPct)}
+                    </SelectItem>
+                  )}
+                  {coverAll && (
+                    <SelectItem value="all" className="text-xs">
+                      Give up nothing · cover {coverAll.coveredCount} ·{" "}
+                      {signedPct(coverAll.profitPct)}
+                    </SelectItem>
+                  )}
+                  {dropPlans.map((g) => (
+                    <SelectItem key={g.index} value={String(g.index)} className="text-xs">
+                      {scenarioLabel(scenarios[g.index!]!)} · {signedPct(g.profitPct)} ·{" "}
+                      {describe(g.index!)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                onClick={calculateCover}
+                disabled={!chosenPlan}
+                className="btn-cta h-9 shrink-0 px-3 text-xs disabled:opacity-50"
+              >
+                Calculate
+              </button>
+            </div>
+            {chosenPlan && chosenPlan.profitPct < 0 && (
+              <p className="text-[11px] font-semibold text-destructive">
+                This plan loses {signedPct(chosenPlan.profitPct)} on every covered scenario.
+                {bestPlan && bestPlan.index !== null && bestPlan.profitPct > 0
+                  ? ` The best available is ${scenarioLabel(scenarios[bestPlan.index]!)} at ${signedPct(bestPlan.profitPct)}.`
+                  : " No give-up scenario turns a profit at these odds."}
+              </p>
+            )}
+          </div>
+
+          {/* Fill stakes */}
+          <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
+            <p className="text-xs font-bold uppercase text-secondary-foreground">Fill stakes</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={balance}
+                className="btn-cta h-9 flex-1 px-3 text-xs"
+                title="Same profit on every included row"
+              >
+                Balance
+              </button>
+              <button
+                onClick={turbo}
+                className="btn-cta h-9 flex-1 px-3 text-xs"
+                title="Unlikely rows get money back only; the rest share the budget"
+              >
+                Turbo
+              </button>
+            </div>
+          </div>
+
+          {/* Teams & odds */}
+          <section className="overflow-hidden rounded-md bg-card shadow-card">
+            <PanelHead title="Teams & odds">
+              <button
+                onClick={clearOdds}
+                className="flex h-7 items-center gap-1 rounded px-2 text-xs font-semibold text-secondary-foreground hover:bg-card"
+              >
+                <Eraser className="h-3.5 w-3.5" /> Clear odds
+              </button>
+            </PanelHead>
+            <div className="grid gap-2 p-3">
+              {tab.events.map((e, k) => (
+                <div key={k} className="space-y-1 rounded-md border bg-muted/50 p-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={e.name}
+                      onChange={(ev) => setEvent(k, { name: ev.target.value })}
+                      placeholder={`Team ${EVENT_LETTERS[k]}`}
+                      className="h-9 min-w-0 flex-1 rounded border border-input bg-card px-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <div className="flex shrink-0 gap-1">
+                      {(["W", "D", "L"] as const).map((o, oi) => (
+                        <input
+                          key={o}
+                          aria-label={`${EVENT_LETTERS[k]} ${WORD[o]} odds`}
+                          inputMode="decimal"
+                          placeholder={o}
+                          // 1 event: the input IS the scenario row's odds, exactly
+                          // like OctoOdds — raw text, no rounding.
+                          value={count === 1 ? (tab.rows[oi]?.odds ?? "") : e[o]}
+                          onChange={(ev) => {
+                            const v = clean(ev.target.value);
+                            if (count === 1)
+                              update((t) => ({
+                                events: t.events.map((x, j) => (j === k ? { ...x, [o]: v } : x)),
+                                rows: t.rows.map((r, j) => (j === oi ? { ...r, odds: v } : r)),
+                              }));
+                            else setEvent(k, { [o]: v });
+                          }}
+                          className="odd-btn h-9 w-14 border border-input px-1.5 text-center text-sm tabular-nums outline-none placeholder:font-black placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-ring"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {e.matchup && (
+                    <p className="truncate text-[11px] text-muted-foreground">{e.matchup}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        </aside>
+
+        {/* Main column */}
+        <div className="min-w-0 space-y-3">
+          {/* Scenario table */}
+          <section className="overflow-hidden rounded-md bg-card shadow-card">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 bg-gradient-header px-3 py-2.5 text-header-foreground">
+              <h2 className="font-display text-sm font-bold uppercase tracking-wide">
+                Scenarios · {scenarios.length}
+              </h2>
+            </div>
+            <div className="max-h-[70vh] overflow-auto">
+              <table className="w-full min-w-[720px] text-[12px]">
+                <thead className="sticky top-0 z-10 bg-panel-head text-[10px] font-bold uppercase text-secondary-foreground">
+                  <tr className="[&>th]:px-2 [&>th]:py-2 [&>th]:text-left">
+                    <th>#</th>
+                    <th>Scenario</th>
+                    <th>Odds</th>
+                    <th>Stake</th>
+                    <th>Net payout</th>
+                    <th>Profit</th>
+                    <th></th>
+                    <th>Min to cover</th>
+                    <th className="text-center">Unlikely</th>
+                    <th className="text-center">Exclude</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {result.rows.map((r, i) => {
+                    const row = tab.rows[i] ?? emptyRow();
+                    return (
+                      <tr
+                        key={i}
+                        className={`[&>td]:px-2 [&>td]:py-1.5 ${row.excluded ? "bg-muted/60 opacity-50" : "hover:bg-muted/40"}`}
+                      >
+                        <td className="text-muted-foreground tabular-nums">{i + 1}</td>
+                        <td>
+                          <p className="font-bold text-primary">{scenarioLabel(scenarios[i]!)}</p>
+                        </td>
+                        <td>
+                          <input
+                            inputMode="decimal"
+                            aria-label={`Odds for ${scenarioLabel(scenarios[i]!)}`}
+                            value={row.odds}
+                            onChange={(ev) => setRow(i, { odds: clean(ev.target.value) })}
+                            className="h-7 w-14 rounded border border-input bg-card px-1.5 text-right text-xs font-bold tabular-nums outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            inputMode="decimal"
+                            aria-label={`Stake for ${scenarioLabel(scenarios[i]!)}`}
+                            value={row.stake}
+                            placeholder="0.00"
+                            onChange={(ev) => setRow(i, { stake: clean(ev.target.value) })}
+                            className="h-7 w-20 rounded border border-input bg-card px-1.5 text-right text-xs font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring"
+                          />
+                        </td>
+                        <td className="tabular-nums">{money(r.net)}</td>
+                        <td
+                          className={`font-bold tabular-nums ${r.profit >= 0 ? "text-up" : "text-down"}`}
+                        >
+                          {r.profit >= 0 ? "+" : ""}
+                          {money(r.profit)}
+                          <span className="ml-1 text-[10px] font-semibold opacity-80">
+                            {r.gross > 0 ? `${r.profitPct.toFixed(1)}%` : "—"}
+                          </span>
+                        </td>
+                        <td className="text-center text-sm">
+                          {r.covered ? (
+                            <span className="text-up" title="Covered">
+                              ▲
+                            </span>
+                          ) : (
+                            <span className="text-down" title="Loss">
+                              ▼
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {r.covered ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : r.minToCover === null ? (
+                            <span
+                              className="text-[11px] text-muted-foreground"
+                              title="Odds ≤ 1 can never cover the stake"
+                            >
+                              n/a
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                setRow(i, {
+                                  stake: String(Math.ceil((r.stake + r.minToCover!) * 100) / 100),
+                                })
+                              }
+                              title={
+                                r.canAffordCover
+                                  ? `Click to stake +${money(r.minToCover)} (within Remaining)`
+                                  : `Needs +${money(r.minToCover)} — exceeds Remaining`
+                              }
+                              className={`h-7 rounded border px-2 text-[11px] font-bold ${
+                                r.canAffordCover
+                                  ? "border-cta/40 bg-cta/15 text-up hover:bg-cta/25"
+                                  : "border-destructive/40 text-destructive hover:bg-destructive/10"
+                              }`}
+                            >
+                              +{money(r.minToCover)}
+                            </button>
+                          )}
+                        </td>
+                        <td className="text-center">
+                          <Checkbox
+                            aria-label="Unlikely"
+                            checked={row.unlikely}
+                            disabled={row.excluded}
+                            onCheckedChange={(c) => setRow(i, { unlikely: c === true })}
+                          />
+                        </td>
+                        <td className="text-center">
+                          <Checkbox
+                            aria-label="Exclude"
+                            checked={row.excluded}
+                            onCheckedChange={(c) =>
+                              setRow(
+                                i,
+                                c === true
+                                  ? { excluded: true, stake: "", unlikely: false }
+                                  : { excluded: false },
+                              )
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        {/* Side panel */}
+        <aside className="space-y-3 lg:col-span-2 xl:col-span-1 xl:sticky xl:top-[8.5rem] xl:self-start">
+          {exposure.length > 0 && (
+            <section className="rounded-md border border-gold bg-gold/15 p-3 text-[12px] shadow-card">
+              <p className="mb-1.5 flex items-center gap-1.5 font-bold uppercase text-secondary-foreground">
+                <AlertTriangle className="h-4 w-4 text-gold" /> Exposure warning
+              </p>
+              <ul className="space-y-1">
+                {exposure.map((x) => (
+                  <li key={x.name}>
+                    <b>{x.name}</b> is already in {x.plans.map((p) => `“${p}”`).join(", ")}.
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section className="overflow-hidden rounded-md bg-card shadow-card">
+            <div className="flex items-center gap-2 bg-gradient-header px-3 py-2.5 text-header-foreground">
+              <h2 className="font-display text-sm font-bold uppercase tracking-wide">
+                {side === "plans" ? "My plans" : "Matches"}
+              </h2>
+              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-cta px-1 text-[10px] font-bold text-cta-foreground">
+                {side === "plans" ? plans.length : (scanResults?.results.length ?? 0)}
+              </span>
+              <Select value={side} onValueChange={setSide}>
+                <SelectTrigger className="ml-auto h-7 w-36 border-header-foreground/20 bg-header-deep/60 text-[11px] font-semibold text-header-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="plans" className="text-xs">
+                    My plans
+                  </SelectItem>
+                  {[1, 2, 3, 4].map((n) => (
+                    <SelectItem key={n} value={String(n)} className="text-xs">
+                      Matches · {n} {n === 1 ? "game" : "games"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {side !== "plans" ? (
+              !scanResults || scanResults.results.length === 0 ? (
+                <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">
+                  No {side}-game results yet — run a scan on the Scanner page and the top results
+                  will show up here.
+                </p>
+              ) : (
+                <div className="max-h-[34rem] space-y-3 overflow-y-auto p-3">
+                  <p className="text-[11px] text-muted-foreground">
+                    Last scan ·{" "}
+                    {scanResults.oddsSource === "best"
+                      ? "best odds across books"
+                      : "same bookmaker"}{" "}
+                    · min {scanResults.minProfit}% · odds from{" "}
+                    {new Date(scanResults.at).toLocaleTimeString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  {scanResults.results.map((r) => (
+                    <ComboCard
+                      key={r.id}
+                      result={r}
+                      games={scanGames}
+                      plans={plans}
+                      onLoad={loadScanResult}
+                    />
+                  ))}
+                </div>
+              )
+            ) : plansLoading ? (
+              <p className="flex items-center justify-center gap-2 px-4 py-8 text-[13px] text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading plans…
+              </p>
+            ) : plans.length === 0 ? (
               <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">
-                No {side}-game results yet — run a scan on the Scanner page and the top results will
-                show up here.
+                Saved plans show up here as Pending.
               </p>
             ) : (
-              <div className="max-h-[34rem] space-y-3 overflow-y-auto p-3">
-                <p className="text-[11px] text-muted-foreground">
-                  Last scan ·{" "}
-                  {scanResults.oddsSource === "best" ? "best odds across books" : "same bookmaker"}{" "}
-                  · min {scanResults.minProfit}% · odds from{" "}
-                  {new Date(scanResults.at).toLocaleTimeString("en-GB", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-                {scanResults.results.map((r) => (
-                  <ComboCard
-                    key={r.id}
-                    result={r}
-                    games={scanGames}
-                    plans={plans}
-                    onLoad={loadScanResult}
-                  />
-                ))}
-              </div>
-            )
-          ) : plansLoading ? (
-            <p className="flex items-center justify-center gap-2 px-4 py-8 text-[13px] text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading plans…
-            </p>
-          ) : plans.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">
-              Saved plans show up here as Pending.
-            </p>
-          ) : (
-            <ul className="max-h-[28rem] divide-y overflow-y-auto">
-              {plans.map((p) => {
-                const staked = p.rows.reduce((a, r) => a + num(r.stake), 0);
-                return (
-                  <li
-                    key={p.id}
-                    className={`space-y-1.5 px-3 py-2.5 text-[12px] ${p.id === tab.loadedPlanId ? "bg-accent/60" : ""}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold leading-tight">{p.title}</p>
-                      <span
-                        className={`shrink-0 rounded px-1.5 py-px text-[10px] font-bold uppercase ${
-                          {
-                            pending: "bg-gold/25 text-secondary-foreground",
-                            won: "bg-up/15 text-up",
-                            lost: "bg-down/15 text-down",
-                            breakeven: "bg-muted text-muted-foreground",
-                          }[betOutcome(p)]
-                        }`}
-                      >
-                        {OUTCOME_LABEL[betOutcome(p)]}
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground">
-                      {p.eventCount} {p.eventCount === 1 ? "event" : "events"} · staked{" "}
-                      <b className="text-foreground">{money(staked)}</b>
-                    </p>
-                    <div className="flex gap-1">
-                      <SmallButton onClick={() => load(p)}>
-                        <FolderOpen className="h-3.5 w-3.5" /> Load
-                      </SmallButton>
-                      {p.status === "Pending" && (
-                        <Link
-                          to="/my-bets"
-                          className="flex h-7 items-center gap-1 rounded bg-muted px-2 text-[11px] font-semibold text-secondary-foreground hover:bg-accent"
+              <ul className="max-h-[28rem] divide-y overflow-y-auto">
+                {plans.map((p) => {
+                  const staked = p.rows.reduce((a, r) => a + num(r.stake), 0);
+                  return (
+                    <li
+                      key={p.id}
+                      className={`space-y-1.5 px-3 py-2.5 text-[12px] ${p.id === tab.loadedPlanId ? "bg-accent/60" : ""}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold leading-tight">{p.title}</p>
+                        <span
+                          className={`shrink-0 rounded px-1.5 py-px text-[10px] font-bold uppercase ${
+                            {
+                              pending: "bg-gold/25 text-secondary-foreground",
+                              won: "bg-up/15 text-up",
+                              lost: "bg-down/15 text-down",
+                              breakeven: "bg-muted text-muted-foreground",
+                            }[betOutcome(p)]
+                          }`}
                         >
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Settle
-                        </Link>
-                      )}
-                      <SmallButton danger onClick={() => setConfirmDelete(p)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </SmallButton>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+                          {OUTCOME_LABEL[betOutcome(p)]}
+                        </span>
+                      </div>
+                      <p className="text-muted-foreground">
+                        {p.eventCount} {p.eventCount === 1 ? "event" : "events"} · staked{" "}
+                        <b className="text-foreground">{money(staked)}</b>
+                      </p>
+                      <div className="flex gap-1">
+                        <SmallButton onClick={() => load(p)}>
+                          <FolderOpen className="h-3.5 w-3.5" /> Load
+                        </SmallButton>
+                        {p.status === "Pending" && (
+                          <Link
+                            to="/my-bets"
+                            className="flex h-7 items-center gap-1 rounded bg-muted px-2 text-[11px] font-semibold text-secondary-foreground hover:bg-accent"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Settle
+                          </Link>
+                        )}
+                        <SmallButton danger onClick={() => setConfirmDelete(p)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </SmallButton>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
 
-        <section className="rounded-md bg-card p-3 text-[12px] text-muted-foreground shadow-card">
-          <p className="mb-1.5 font-bold uppercase text-secondary-foreground">How it works</p>
-          <ul className="list-disc space-y-1 pl-4">
-            <li>Each row is one possible result; only one of them will happen.</li>
-            <li>Tax is taken from winnings only, never from the stake you get back.</li>
-            <li>▲ means that row pays back at least everything you staked.</li>
-            <li>Mark rows you don't believe in as Unlikely, then press Turbo.</li>
-          </ul>
-          <p className="mt-2 text-[11px]">
-            Plans are saved to your account and also open in OctoOdds.
-          </p>
-        </section>
-      </aside>
+          <section className="rounded-md bg-card p-3 text-[12px] text-muted-foreground shadow-card">
+            <p className="mb-1.5 font-bold uppercase text-secondary-foreground">How it works</p>
+            <ul className="list-disc space-y-1 pl-4">
+              <li>Each row is one possible result; only one of them will happen.</li>
+              <li>Tax is taken from winnings only, never from the stake you get back.</li>
+              <li>▲ means that row pays back at least everything you staked.</li>
+              <li>Mark rows you don't believe in as Unlikely, then press Turbo.</li>
+            </ul>
+            <p className="mt-2 text-[11px]">
+              Plans are saved to your account and also open in OctoOdds.
+            </p>
+          </section>
+        </aside>
+      </div>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
         <AlertDialogContent>
@@ -1057,10 +1103,18 @@ export function CoverCalculator() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-[11px] font-semibold uppercase text-muted-foreground">
+    <label className={`block ${className ?? ""}`}>
+      <span className="mb-1 block whitespace-nowrap text-[11px] font-semibold uppercase text-muted-foreground">
         {label}
       </span>
       {children}
@@ -1074,7 +1128,7 @@ function NumInput({ value, onChange }: { value: string; onChange: (v: string) =>
       inputMode="decimal"
       value={value}
       onChange={(e) => onChange(clean(e.target.value))}
-      className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring"
+      className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring"
     />
   );
 }
@@ -1087,51 +1141,6 @@ function PanelHead({ title, children }: { title: string; children?: React.ReactN
       </h2>
       {children}
     </div>
-  );
-}
-
-function ToolButton({
-  icon: Icon,
-  label,
-  hint,
-  onClick,
-}: {
-  icon: typeof Scale;
-  label: string;
-  hint: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex min-w-36 items-center gap-2 rounded-md bg-primary px-3 py-2 text-left text-primary-foreground transition-colors hover:bg-header"
-    >
-      <Icon className="h-5 w-5 shrink-0 text-cta" />
-      <span>
-        <span className="block text-xs font-bold uppercase">{label}</span>
-        <span className="block text-[10px] opacity-80">{hint}</span>
-      </span>
-    </button>
-  );
-}
-
-function StepButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      aria-label={label}
-      onClick={onClick}
-      className="grid h-8 w-8 place-items-center border border-input bg-card text-secondary-foreground first:rounded-l last:rounded-r hover:bg-accent"
-    >
-      {children}
-    </button>
   );
 }
 

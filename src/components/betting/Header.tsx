@@ -1,4 +1,4 @@
-import { Menu, Search, Smartphone, UserPlus, LogIn, LogOut, User } from "lucide-react";
+import { Menu, Smartphone, UserPlus, LogIn, LogOut, User } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
@@ -30,13 +30,6 @@ export function Header() {
               className="h-10 w-auto rounded bg-white px-1.5 py-0.5"
             />
           </Link>
-          <div className="relative ml-2 hidden flex-1 md:block md:max-w-sm">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-header-muted" />
-            <input
-              placeholder="Search for a team or league"
-              className="h-9 w-full rounded-md bg-header-deep/70 pl-8 pr-3 text-sm text-header-foreground outline-none placeholder:text-header-muted focus:ring-2 focus:ring-cta"
-            />
-          </div>
           <div className="ml-auto flex items-center gap-2">
             {loading ? null : user ? (
               <>

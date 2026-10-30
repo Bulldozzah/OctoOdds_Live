@@ -1,16 +1,21 @@
 import { useState } from "react";
 import { AlertTriangle, ArrowRightLeft, Eye, ShieldCheck } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CURRENCY } from "@/lib/sample-data";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { bookName, type Game } from "@/lib/odds-feed";
-import { dutchStakes, scenariosFor, type ComboResult } from "@/lib/scanner";
+import { dutchStakes, scenariosFor, type ComboResult, type PricedLeg } from "@/lib/scanner";
 import { EVENT_LETTERS, findExposure, type Outcome } from "@/lib/calculator";
 import type { SavedPlan } from "@/lib/calculator-plans";
 
 const PREVIEW_BUDGET = 1000;
 
 export const money = (n: number) =>
-  `${n < 0 ? "−" : ""}${CURRENCY}${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `${n < 0 ? "−" : ""}${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const fmtDay = (ms: number) =>
   new Date(ms).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 export const hhmm = (ms: number) =>
@@ -67,7 +72,9 @@ export function ComboCard({
           {single ? "Single-game arb · " : ""}
           {mixed ? "Best odds · several books" : bookName(r.book)}
         </span>
-        <span className={`ml-auto font-display text-xl font-black tabular-nums ${r.full ? "text-up" : "text-primary"}`}>
+        <span
+          className={`ml-auto font-display text-xl font-black tabular-nums ${r.full ? "text-up" : "text-primary"}`}
+        >
           +{r.profitPct.toFixed(2)}%
         </span>
       </div>
@@ -76,14 +83,15 @@ export function ComboCard({
         {r.legs.map((l, k) => {
           const g = legGames[k];
           return (
-            <li key={l.gameId} className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5 px-3 py-2 sm:grid-cols-[auto_1fr_auto]">
+            <li
+              key={l.gameId}
+              className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1.5 px-3 py-2 sm:grid-cols-[auto_1fr_auto]"
+            >
               <span className="grid h-7 w-7 place-items-center rounded bg-primary text-xs font-black text-primary-foreground">
                 {EVENT_LETTERS[k]}
               </span>
               <div className="min-w-0 text-[13px]">
-                <p className="truncate font-semibold">
-                  {g ? `${g.home} – ${g.away}` : l.gameId}
-                </p>
+                <p className="truncate font-semibold">{g ? `${g.home} – ${g.away}` : l.gameId}</p>
                 {g && (
                   <p className="truncate text-[11px] text-muted-foreground">
                     {g.flag} {g.league} · {fmtDay(g.kickoff)} {hhmm(g.kickoff)}
@@ -98,9 +106,17 @@ export function ComboCard({
                       excludedSc?.[k] === o ? "bg-down/10 ring-1 ring-down/40" : "bg-odd"
                     }`}
                   >
-                    <span className="text-[9px] font-bold uppercase text-muted-foreground">{o === "W" ? "1" : o === "D" ? "X" : "2"}</span>
-                    <span className="text-[13px] font-bold tabular-nums text-odd-foreground">{l.odds[o].toFixed(2)}</span>
-                    {mixed && <span className="max-w-16 truncate text-[9px] text-muted-foreground">{bookName(l.books[o])}</span>}
+                    <span className="text-[9px] font-bold uppercase text-muted-foreground">
+                      {o === "W" ? "1" : o === "D" ? "X" : "2"}
+                    </span>
+                    <span className="text-[13px] font-bold tabular-nums text-odd-foreground">
+                      {l.odds[o].toFixed(2)}
+                    </span>
+                    {mixed && (
+                      <span className="max-w-16 truncate text-[9px] text-muted-foreground">
+                        {bookName(l.books[o])}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -112,12 +128,18 @@ export function ComboCard({
       <div className="space-y-1.5 border-t px-3 py-2 text-xs">
         {excludedSc ? (
           <p className="text-muted-foreground">
-            Uncovered: <b className="text-foreground">{excludedSc.map((o, k) => outcomeText(legGames[k], o)).join(" + ")}</b>{" "}
-            ({excludedSc.join("+")}) · <b className="text-down">{(r.excludedProb * 100).toFixed(1)}%</b> implied chance it
+            Uncovered:{" "}
+            <b className="text-foreground">
+              {excludedSc.map((o, k) => outcomeText(legGames[k], o)).join(" + ")}
+            </b>{" "}
+            ({excludedSc.join("+")}) ·{" "}
+            <b className="text-down">{(r.excludedProb * 100).toFixed(1)}%</b> implied chance it
             happens.
           </p>
         ) : (
-          <p className="font-semibold text-up">Every one of the {total} results pays out — no risk at these prices.</p>
+          <p className="font-semibold text-up">
+            Every one of the {total} results pays out — no risk at these prices.
+          </p>
         )}
         {exposure.length > 0 && (
           <p className="flex items-start gap-1 font-semibold text-destructive">
@@ -143,16 +165,19 @@ export function ComboCard({
   );
 }
 
-function PreviewDialog({
+export function PreviewDialog({
   open,
   onOpenChange,
   result: r,
   legGames,
+  stats,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  result: ComboResult;
+  result: { legs: PricedLeg[]; excluded: number | null; book: string | null };
   legGames: (Game | undefined)[];
+  /** Optional stat tiles rendered under the header (e.g. EV figures on Edge). */
+  stats?: React.ReactNode;
 }) {
   const n = r.legs.length;
   const rows = dutchStakes(
@@ -167,10 +192,13 @@ function PreviewDialog({
         <DialogHeader>
           <DialogTitle>Slip preview · {money(PREVIEW_BUDGET)} budget</DialogTitle>
           <DialogDescription>
-            {r.book === null ? "Best price per result, placed at different bookmakers." : `Every stake placed at ${bookName(r.book)}.`}{" "}
+            {r.book === null
+              ? "Best price per result, placed at different bookmakers."
+              : `Every stake placed at ${bookName(r.book)}.`}{" "}
             Stakes are split so each covered result returns the same.
           </DialogDescription>
         </DialogHeader>
+        {stats}
         <div className="max-h-[60vh] overflow-auto rounded border">
           <table className="w-full text-[12px]">
             <thead className="sticky top-0 bg-panel-head text-[10px] font-bold uppercase text-secondary-foreground">
@@ -187,18 +215,27 @@ function PreviewDialog({
               {rows.map((row, i) => {
                 const ret = row.stake * row.odds;
                 return (
-                  <tr key={i} className={`[&>td]:px-2 [&>td]:py-1.5 ${row.excluded ? "bg-down/5 text-muted-foreground" : ""}`}>
+                  <tr
+                    key={i}
+                    className={`[&>td]:px-2 [&>td]:py-1.5 ${row.excluded ? "bg-down/5 text-muted-foreground" : ""}`}
+                  >
                     <td className="tabular-nums">{i + 1}</td>
                     <td>
-                      <p className="font-bold text-primary">{scenarios[i]!.map((o, k) => `${EVENT_LETTERS[k]}${o}`).join("+")}</p>
+                      <p className="font-bold text-primary">
+                        {scenarios[i]!.map((o, k) => `${EVENT_LETTERS[k]}${o}`).join("+")}
+                      </p>
                       <p className="max-w-72 truncate text-[11px] text-muted-foreground">
                         {scenarios[i]!.map((o, k) => outcomeText(legGames[k], o)).join(" · ")}
                       </p>
                     </td>
                     <td className="font-bold tabular-nums">{row.odds.toFixed(2)}</td>
-                    <td className="tabular-nums">{row.excluded ? "Uncovered" : money(row.stake)}</td>
+                    <td className="tabular-nums">
+                      {row.excluded ? "Uncovered" : money(row.stake)}
+                    </td>
                     <td className="tabular-nums">{money(ret)}</td>
-                    <td className={`font-bold tabular-nums ${ret - PREVIEW_BUDGET >= 0 ? "text-up" : "text-down"}`}>
+                    <td
+                      className={`font-bold tabular-nums ${ret - PREVIEW_BUDGET >= 0 ? "text-up" : "text-down"}`}
+                    >
                       {money(ret - PREVIEW_BUDGET)}
                     </td>
                   </tr>
