@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Copy,
   Eraser,
   FileDown,
   FolderOpen,
@@ -570,16 +571,14 @@ export function CoverCalculator() {
           {/* Balance win */}
           <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold uppercase text-secondary-foreground">
-                Balance win
+              <span className="order-1 text-xs font-bold uppercase text-secondary-foreground">
                 {maxW > 0 && (
                   <span className="font-normal normal-case text-muted-foreground">
-                    {" "}
-                    · max <b className="text-down">{money(Math.floor(maxW * 100) / 100)}</b>
+                    max <b className="text-down">{money(Math.floor(maxW * 100) / 100)}</b>
                   </span>
                 )}
               </span>
-              <div className="space-y-1">
+              <div className="order-3 w-full space-y-1 sm:order-2 sm:min-w-0 sm:flex-1">
                 <div className="relative">
                   <input
                     inputMode="decimal"
@@ -594,7 +593,7 @@ export function CoverCalculator() {
                           maxW > 0 && num(v) > maxW ? (Math.floor(maxW * 100) / 100).toFixed(2) : v,
                       }));
                     }}
-                    className={`h-9 w-36 rounded-md border border-input bg-card pl-2 pr-16 text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring ${
+                    className={`h-9 w-full rounded-md border border-input bg-card pl-2 pr-16 text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring ${
                       overLimit && winTarget > 0 ? "border-destructive text-destructive" : ""
                     }`}
                   />
@@ -638,8 +637,11 @@ export function CoverCalculator() {
                   </div>
                 </div>
               </div>
-              <button onClick={applyWin} className="btn-cta ml-auto h-9 w-24 shrink-0 text-xs">
-                Apply
+              <button
+                onClick={applyWin}
+                className="btn-cta order-2 ml-auto h-9 w-24 shrink-0 text-xs sm:order-3"
+              >
+                Balance win
               </button>
             </div>
             <p className="flex items-baseline justify-end gap-x-4 text-sm font-semibold text-muted-foreground">
@@ -651,9 +653,20 @@ export function CoverCalculator() {
               </span>
               <span>
                 Remaining{" "}
-                <b className="font-display text-lg font-black tabular-nums text-down">
+                <button
+                  onClick={() => {
+                    void navigator.clipboard
+                      ?.writeText(result.remaining.toFixed(2))
+                      .then(() =>
+                        toast("Remaining copied", { description: money(result.remaining) }),
+                      );
+                  }}
+                  title="Copy remaining amount"
+                  className="group/copy inline-flex cursor-copy items-center gap-1 font-display text-lg font-black tabular-nums text-down hover:opacity-75"
+                >
                   {money(result.remaining)}
-                </b>
+                  <Copy className="h-3.5 w-3.5 opacity-60" />
+                </button>
               </span>
             </p>
             {(limitHit || overLimit) && winTarget > 0 && (
