@@ -560,7 +560,11 @@ export function CoverCalculator() {
                 </Select>
               </Field>
               <Field label="Stake" className="w-24">
-                <NumInput value={tab.budget} onChange={(v) => update(() => ({ budget: v }))} />
+                <NumInput
+                  value={tab.budget}
+                  onChange={(v) => update(() => ({ budget: v }))}
+                  className="border-2 border-lime-500 focus:ring-lime-400"
+                />
               </Field>
               <Field label="Tax %" className="w-16">
                 <NumInput value={tab.tax} onChange={(v) => update(() => ({ tax: v }))} />
@@ -793,7 +797,7 @@ export function CoverCalculator() {
                               }));
                             else setEvent(k, { [o]: v });
                           }}
-                          className="odd-btn h-9 w-14 border border-input px-1.5 text-center text-sm tabular-nums outline-none placeholder:font-black placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-ring"
+                          className="odd-btn h-9 w-14 border-2 border-lime-500 px-1.5 text-center text-sm tabular-nums outline-none placeholder:font-black placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-lime-400"
                         />
                       ))}
                     </div>
@@ -860,7 +864,7 @@ export function CoverCalculator() {
                             value={row.stake}
                             placeholder="0.00"
                             onChange={(ev) => setRow(i, { stake: clean(ev.target.value) })}
-                            className="h-7 w-20 rounded border border-input bg-card px-1.5 text-right text-xs font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring"
+                            className="h-7 w-20 rounded border-2 border-lime-500 bg-card px-1.5 text-right text-xs font-semibold tabular-nums outline-none focus:ring-2 focus:ring-lime-400"
                           />
                         </td>
                         <td className="tabular-nums">{money(r.net)}</td>
@@ -1135,13 +1139,21 @@ function Field({
   );
 }
 
-function NumInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function NumInput({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
   return (
     <input
       inputMode="decimal"
       value={value}
       onChange={(e) => onChange(clean(e.target.value))}
-      className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring"
+      className={`h-9 w-full rounded-md border border-input bg-card px-3 text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring ${className ?? ""}`}
     />
   );
 }
