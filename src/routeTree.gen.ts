@@ -15,6 +15,7 @@ import { Route as CalculatorRouteImport } from './routes/calculator'
 import { Route as EdgeRouteImport } from './routes/edge'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyBetsRouteImport } from './routes/my-bets'
+import { Route as SampleRouteImport } from './routes/sample'
 import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as StatsRouteImport } from './routes/stats'
 
@@ -48,6 +49,11 @@ const MyBetsRoute = MyBetsRouteImport.update({
   path: '/my-bets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SampleRoute = SampleRouteImport.update({
+  id: '/sample',
+  path: '/sample',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScannerRoute = ScannerRouteImport.update({
   id: '/scanner',
   path: '/scanner',
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/edge': typeof EdgeRoute
   '/login': typeof LoginRoute
   '/my-bets': typeof MyBetsRoute
+  '/sample': typeof SampleRoute
   '/scanner': typeof ScannerRoute
   '/stats': typeof StatsRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/edge': typeof EdgeRoute
   '/login': typeof LoginRoute
   '/my-bets': typeof MyBetsRoute
+  '/sample': typeof SampleRoute
   '/scanner': typeof ScannerRoute
   '/stats': typeof StatsRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/edge': typeof EdgeRoute
   '/login': typeof LoginRoute
   '/my-bets': typeof MyBetsRoute
+  '/sample': typeof SampleRoute
   '/scanner': typeof ScannerRoute
   '/stats': typeof StatsRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/edge'
     | '/login'
     | '/my-bets'
+    | '/sample'
     | '/scanner'
     | '/stats'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/edge'
     | '/login'
     | '/my-bets'
+    | '/sample'
     | '/scanner'
     | '/stats'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/edge'
     | '/login'
     | '/my-bets'
+    | '/sample'
     | '/scanner'
     | '/stats'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   EdgeRoute: typeof EdgeRoute
   LoginRoute: typeof LoginRoute
   MyBetsRoute: typeof MyBetsRoute
+  SampleRoute: typeof SampleRoute
   ScannerRoute: typeof ScannerRoute
   StatsRoute: typeof StatsRoute
 }
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyBetsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sample': {
+      id: '/sample'
+      path: '/sample'
+      fullPath: '/sample'
+      preLoaderRoute: typeof SampleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scanner': {
       id: '/scanner'
       path: '/scanner'
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   EdgeRoute: EdgeRoute,
   LoginRoute: LoginRoute,
   MyBetsRoute: MyBetsRoute,
+  SampleRoute: SampleRoute,
   ScannerRoute: ScannerRoute,
   StatsRoute: StatsRoute,
 }

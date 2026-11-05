@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -56,6 +56,11 @@ export function ProtectedRoute({
         onPrimary={() => void refreshProfile()}
         primary="Refresh status"
         onSecondary={() => void signOut().then(() => navigate({ to: "/login", replace: true }))}
+        footer={
+          <Link to="/sample" className="text-xs font-semibold text-primary underline">
+            Browse the read-only sample meanwhile
+          </Link>
+        }
       />
     );
   }
@@ -80,6 +85,7 @@ function Notice({
   primary,
   onPrimary,
   onSecondary,
+  footer,
 }: {
   title: string;
   text: string;
@@ -87,6 +93,7 @@ function Notice({
   primary: string;
   onPrimary: () => void;
   onSecondary: () => void;
+  footer?: ReactNode;
 }) {
   return (
     <div className="grid min-h-[60vh] place-items-center px-4">
@@ -113,6 +120,7 @@ function Notice({
               Sign out
             </button>
           </div>
+          {footer}
         </div>
       </div>
     </div>

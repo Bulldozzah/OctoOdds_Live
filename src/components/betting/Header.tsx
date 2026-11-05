@@ -12,13 +12,13 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40">
       {/* Main bar */}
-      <div className="bg-gradient-header text-header-foreground">
+      <div className="border-b bg-white text-foreground">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-3">
           {openMobile && (
             <button
               onClick={openMobile}
               aria-label="Open navigation"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-header-foreground hover:bg-header-deep/60 md:hidden"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-secondary-foreground hover:bg-muted md:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -33,7 +33,7 @@ export function Header() {
           <div className="ml-auto flex items-center gap-2">
             {loading ? null : user ? (
               <>
-                <span className="hidden items-center gap-1.5 text-xs text-header-muted sm:flex">
+                <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
                   <User className="h-4 w-4" />
                   <span className="max-w-[12rem] truncate">{profile?.full_name || user.email}</span>
                 </span>
@@ -41,7 +41,7 @@ export function Header() {
                   onClick={() =>
                     void signOut().then(() => navigate({ to: "/login", replace: true }))
                   }
-                  className="btn-ghost-header h-9 px-3 text-xs"
+                  className="flex h-9 items-center gap-1.5 rounded-md border border-input px-3 text-xs font-bold uppercase text-secondary-foreground hover:bg-muted"
                 >
                   <LogOut className="h-4 w-4" />
                   <span className="hidden sm:inline">Log out</span>
@@ -63,7 +63,7 @@ export function Header() {
               <>
                 <button
                   onClick={() => navigate({ to: "/login" })}
-                  className="btn-ghost-header h-9 px-3 text-xs"
+                  className="flex h-9 items-center gap-1.5 rounded-md border border-input px-3 text-xs font-bold uppercase text-secondary-foreground hover:bg-muted"
                 >
                   <LogIn className="h-4 w-4" />
                   <span className="hidden sm:inline">Log in</span>

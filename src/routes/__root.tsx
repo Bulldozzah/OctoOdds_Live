@@ -80,10 +80,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "OctoOdds — Sports Betting" },
-      { name: "description", content: "Sports betting with live odds and a fast bet slip." },
-      { property: "og:title", content: "OctoOdds — Sports Betting" },
-      { property: "og:description", content: "Sports betting with live odds and a fast bet slip." },
+      { title: "OctoOdds — Odds Analytics & Cover Calculator" },
+      {
+        name: "description",
+        content:
+          "Scan bookmaker odds, find dutching and arbitrage combos, and plan stakes across every outcome.",
+      },
+      { property: "og:title", content: "OctoOdds — Odds Analytics & Cover Calculator" },
+      {
+        property: "og:description",
+        content:
+          "Scan bookmaker odds, find dutching and arbitrage combos, and plan stakes across every outcome.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
