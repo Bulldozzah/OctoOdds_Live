@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Gauge,
+  Info,
   LogOut,
   Radar,
   ShieldCheck,
@@ -12,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { AboutDialog } from "@/components/legal/AboutDialog";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -112,6 +114,20 @@ export function AppSidebar({
 
       {/* Bottom */}
       <div className="space-y-1 border-t border-header/60 p-2">
+        <AboutDialog
+          trigger={
+            <button
+              title="About"
+              className={cn(
+                "flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-[13px] font-semibold uppercase tracking-wide text-header-muted transition-colors hover:bg-header/60 hover:text-header-foreground",
+                !open && "justify-center px-0",
+              )}
+            >
+              <Info className="h-5 w-5 shrink-0" />
+              {open && "About"}
+            </button>
+          }
+        />
         {user && (
           <button
             title="Sign out"

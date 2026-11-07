@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { Lock, Mail, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LEGAL_LINKS, MIN_AGE } from "@/lib/legal";
@@ -120,6 +121,7 @@ export function AuthSwitch({
         .auth-switch .as-legal { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 0.75rem; }
         .auth-switch .as-legal a { color: var(--muted-foreground); }
         .auth-switch .as-legal a:hover { color: var(--primary); text-decoration: underline; }
+
         .auth-switch .panels-container {
           position: absolute; height: 100%; width: 100%; top: 0; left: 0;
           display: grid; grid-template-columns: repeat(2, 1fr);
@@ -185,7 +187,9 @@ export function AuthSwitch({
       `}</style>
 
       <div className="as-brand">
-        <img src="/octoodds-logo.png" alt="OctOdds — Even the odds" className="as-brand-img" />
+        <Link to="/" aria-label="OctoOdds home">
+          <img src="/octoodds-logo.png" alt="OctOdds — Even the odds" className="as-brand-img" />
+        </Link>
       </div>
 
       <div className={cn("as-container", isSignUp && "sign-up-mode")}>
