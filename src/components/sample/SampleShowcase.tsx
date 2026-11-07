@@ -9,6 +9,7 @@ import { computeBet, outcomeOf, summarize } from "@/lib/bets";
 import { ComboCard } from "@/components/scanner/ComboCard";
 import { StatusBadge } from "@/components/bets/MyBets";
 import { money, pct, signedMoney, toneOf, when } from "@/components/bets/format";
+import { LegalLinks } from "@/components/legal/LegalLinks";
 import { SampleCalculator } from "./SampleCalculator";
 
 /**
@@ -122,10 +123,13 @@ export function SampleShowcase() {
         )}
       </Section>
 
-      <p className="px-1 pb-4 text-center text-[11px] text-muted-foreground">
-        OctoOdds is an analytics tool: no bets are placed, held or paid out on OctoOdds. Odds move —
-        always check prices at the bookmaker. 18+ only.
-      </p>
+      <footer className="space-y-2 px-1 pb-4 text-center text-[11px] text-muted-foreground">
+        <LegalLinks className="font-semibold" />
+        <p>
+          OctoOdds is an analytics tool: no bets are placed, held or paid out on OctoOdds. Odds move
+          — always check prices at the bookmaker. 18+ only.
+        </p>
+      </footer>
     </main>
   );
 }

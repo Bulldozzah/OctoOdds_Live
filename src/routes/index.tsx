@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Calculator, History, ScanSearch } from "lucide-react";
 import { HeroFinancial } from "@/components/ui/hero-financial";
 import { SampleCalculator } from "@/components/sample/SampleCalculator";
+import { LegalLinks } from "@/components/legal/LegalLinks";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
@@ -88,7 +89,8 @@ function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-neutral-200 px-4 py-6 text-center text-xs text-neutral-500">
+      <footer className="space-y-3 border-t border-neutral-200 px-4 py-6 text-center text-xs text-neutral-500">
+        <LegalLinks className="font-semibold text-neutral-600" />
         <p>
           OctoOdds is an analytics tool. No bets are placed, held or paid out on OctoOdds — you
           place bets yourself at licensed bookmakers. 18+ only. Please gamble responsibly.

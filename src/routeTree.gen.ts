@@ -12,12 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CalculatorRouteImport } from './routes/calculator'
+import { Route as CookiesRouteImport } from './routes/cookies'
 import { Route as EdgeRouteImport } from './routes/edge'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyBetsRouteImport } from './routes/my-bets'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as RefundsRouteImport } from './routes/refunds'
 import { Route as SampleRouteImport } from './routes/sample'
 import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as StatsRouteImport } from './routes/stats'
+import { Route as TermsRouteImport } from './routes/terms'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -32,6 +36,11 @@ const AdminRoute = AdminRouteImport.update({
 const CalculatorRoute = CalculatorRouteImport.update({
   id: '/calculator',
   path: '/calculator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiesRoute = CookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EdgeRoute = EdgeRouteImport.update({
@@ -49,6 +58,16 @@ const MyBetsRoute = MyBetsRouteImport.update({
   path: '/my-bets',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundsRoute = RefundsRouteImport.update({
+  id: '/refunds',
+  path: '/refunds',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SampleRoute = SampleRouteImport.update({
   id: '/sample',
   path: '/sample',
@@ -64,40 +83,57 @@ const StatsRoute = StatsRouteImport.update({
   path: '/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/calculator': typeof CalculatorRoute
+  '/cookies': typeof CookiesRoute
   '/edge': typeof EdgeRoute
   '/login': typeof LoginRoute
   '/my-bets': typeof MyBetsRoute
+  '/privacy': typeof PrivacyRoute
+  '/refunds': typeof RefundsRoute
   '/sample': typeof SampleRoute
   '/scanner': typeof ScannerRoute
   '/stats': typeof StatsRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/calculator': typeof CalculatorRoute
+  '/cookies': typeof CookiesRoute
   '/edge': typeof EdgeRoute
   '/login': typeof LoginRoute
   '/my-bets': typeof MyBetsRoute
+  '/privacy': typeof PrivacyRoute
+  '/refunds': typeof RefundsRoute
   '/sample': typeof SampleRoute
   '/scanner': typeof ScannerRoute
   '/stats': typeof StatsRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/calculator': typeof CalculatorRoute
+  '/cookies': typeof CookiesRoute
   '/edge': typeof EdgeRoute
   '/login': typeof LoginRoute
   '/my-bets': typeof MyBetsRoute
+  '/privacy': typeof PrivacyRoute
+  '/refunds': typeof RefundsRoute
   '/sample': typeof SampleRoute
   '/scanner': typeof ScannerRoute
   '/stats': typeof StatsRoute
+  '/terms': typeof TermsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -105,46 +141,62 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/calculator'
+    | '/cookies'
     | '/edge'
     | '/login'
     | '/my-bets'
+    | '/privacy'
+    | '/refunds'
     | '/sample'
     | '/scanner'
     | '/stats'
+    | '/terms'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
     | '/calculator'
+    | '/cookies'
     | '/edge'
     | '/login'
     | '/my-bets'
+    | '/privacy'
+    | '/refunds'
     | '/sample'
     | '/scanner'
     | '/stats'
+    | '/terms'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/calculator'
+    | '/cookies'
     | '/edge'
     | '/login'
     | '/my-bets'
+    | '/privacy'
+    | '/refunds'
     | '/sample'
     | '/scanner'
     | '/stats'
+    | '/terms'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   CalculatorRoute: typeof CalculatorRoute
+  CookiesRoute: typeof CookiesRoute
   EdgeRoute: typeof EdgeRoute
   LoginRoute: typeof LoginRoute
   MyBetsRoute: typeof MyBetsRoute
+  PrivacyRoute: typeof PrivacyRoute
+  RefundsRoute: typeof RefundsRoute
   SampleRoute: typeof SampleRoute
   ScannerRoute: typeof ScannerRoute
   StatsRoute: typeof StatsRoute
+  TermsRoute: typeof TermsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -170,6 +222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CalculatorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cookies': {
+      id: '/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof CookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/edge': {
       id: '/edge'
       path: '/edge'
@@ -189,6 +248,20 @@ declare module '@tanstack/react-router' {
       path: '/my-bets'
       fullPath: '/my-bets'
       preLoaderRoute: typeof MyBetsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refunds': {
+      id: '/refunds'
+      path: '/refunds'
+      fullPath: '/refunds'
+      preLoaderRoute: typeof RefundsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sample': {
@@ -212,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -219,12 +299,16 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   CalculatorRoute: CalculatorRoute,
+  CookiesRoute: CookiesRoute,
   EdgeRoute: EdgeRoute,
   LoginRoute: LoginRoute,
   MyBetsRoute: MyBetsRoute,
+  PrivacyRoute: PrivacyRoute,
+  RefundsRoute: RefundsRoute,
   SampleRoute: SampleRoute,
   ScannerRoute: ScannerRoute,
   StatsRoute: StatsRoute,
+  TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

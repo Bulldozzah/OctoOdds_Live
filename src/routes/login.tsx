@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AuthSwitch, type SignInValues, type SignUpValues } from "@/components/auth/AuthSwitch";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth";
+import { TERMS_VERSION } from "@/lib/legal";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -42,7 +43,8 @@ function LoginPage() {
     else void navigate({ to: "/calculator", replace: true });
   };
 
-  const handleSignUp = async ({ fullName, email, password }: SignUpValues) => {
+  const handleSignUp = async ({ fullName, email, password, acceptedTerms }: SignUpValues) => {
+    if (!acceptedTerms) return;
     setError("");
     setNotice("");
     setBusy(true);
@@ -51,7 +53,11 @@ function LoginPage() {
       password,
       options: {
         // Stored on the auth user; the profiles row picks it up.
-        data: { full_name: fullName },
+        data: {
+          full_name: fullName,
+          terms_accepted_at: new Date().toISOString(),
+          terms_version: TERMS_VERSION,
+        },
         emailRedirectTo: `${window.location.origin}/login`,
       },
     });

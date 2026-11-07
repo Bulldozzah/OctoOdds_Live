@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { SALE_PLAN } from "@/lib/supabase";
 
 /**
  * Gates a page by auth state and paid access (same rules as OctoOdds):
@@ -52,14 +53,19 @@ export function ProtectedRoute({
     return (
       <Notice
         title="Subscription required"
-        text="Your account is active but not yet unlocked. Plans are $5 / month, $25 / 6 months or $50 / year — access opens once your payment is confirmed."
+        text={`Your account is active but not yet unlocked. Access is one month for $${SALE_PLAN.price}, paid once, non-refundable and never auto-renewed — it opens once your payment is confirmed.`}
         onPrimary={() => void refreshProfile()}
         primary="Refresh status"
         onSecondary={() => void signOut().then(() => navigate({ to: "/login", replace: true }))}
         footer={
-          <Link to="/sample" className="text-xs font-semibold text-primary underline">
-            Browse the read-only sample meanwhile
-          </Link>
+          <div className="flex flex-col gap-1">
+            <Link to="/sample" className="text-xs font-semibold text-primary underline">
+              Browse the read-only sample meanwhile
+            </Link>
+            <Link to="/refunds" className="text-[11px] text-muted-foreground underline">
+              Refunds &amp; cancellation policy
+            </Link>
+          </div>
         }
       />
     );

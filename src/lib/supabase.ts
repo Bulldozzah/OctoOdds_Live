@@ -49,6 +49,13 @@ export const SUBSCRIPTION_PLANS: {
   { id: "annual", name: "1 Year", months: 12, price: 50 },
 ];
 
+/**
+ * The only plan sold to customers: one month, one payment, no renewal. The
+ * longer plans above stay defined because existing OctoOdds members hold them
+ * and admins can still grant them, but nothing customer-facing offers them.
+ */
+export const SALE_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "monthly")!;
+
 /** Admins and superusers never pay; a regular user needs an active paid subscription. */
 export function hasPaidAccess(profile: Profile | null | undefined): boolean {
   if (!profile) return false;

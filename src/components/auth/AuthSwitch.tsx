@@ -1,9 +1,16 @@
 import { useState, type ReactNode } from "react";
 import { Lock, Mail, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LEGAL_LINKS, MIN_AGE } from "@/lib/legal";
 
 export type SignInValues = { email: string; password: string };
-export type SignUpValues = { fullName: string; email: string; password: string };
+export type SignUpValues = {
+  fullName: string;
+  email: string;
+  password: string;
+  /** Always true: sign-up is blocked until the Terms box is ticked. */
+  acceptedTerms: true;
+};
 
 export type AuthSwitchProps = {
   onSignIn: (values: SignInValues) => void;
@@ -31,7 +38,8 @@ export function AuthSwitch({
 }: AuthSwitchProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [signIn, setSignIn] = useState<SignInValues>({ email: "", password: "" });
-  const [signUp, setSignUp] = useState<SignUpValues>({ fullName: "", email: "", password: "" });
+  const [signUp, setSignUp] = useState({ fullName: "", email: "", password: "" });
+  const [accepted, setAccepted] = useState(false);
 
   return (
     <div className={cn("auth-switch", className)}>
@@ -103,6 +111,15 @@ export function AuthSwitch({
         }
         .auth-switch .btn:hover { background-color: var(--cta-hover); transform: translateY(-2px); box-shadow: var(--shadow-cta); }
         .auth-switch .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; background-color: var(--cta); }
+        .auth-switch .as-terms {
+          max-width: 380px; width: 100%; margin: 6px 0 0; display: flex; gap: 8px; align-items: flex-start;
+          font-size: 0.72rem; line-height: 1.3; color: var(--muted-foreground); text-align: left; cursor: pointer;
+        }
+        .auth-switch .as-terms input { margin-top: 2px; width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--primary); cursor: pointer; }
+        .auth-switch .as-terms a { color: var(--primary); font-weight: 600; text-decoration: underline; }
+        .auth-switch .as-legal { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 0.75rem; }
+        .auth-switch .as-legal a { color: var(--muted-foreground); }
+        .auth-switch .as-legal a:hover { color: var(--primary); text-decoration: underline; }
         .auth-switch .panels-container {
           position: absolute; height: 100%; width: 100%; top: 0; left: 0;
           display: grid; grid-template-columns: repeat(2, 1fr);
@@ -216,7 +233,7 @@ export function AuthSwitch({
               className="sign-up-form"
               onSubmit={(e) => {
                 e.preventDefault();
-                onSignUp(signUp);
+                if (accepted) onSignUp({ ...signUp, acceptedTerms: true });
               }}
             >
               <h2 className="title">Sign up</h2>
@@ -256,7 +273,35 @@ export function AuthSwitch({
                   onChange={(e) => setSignUp((s) => ({ ...s, password: e.target.value }))}
                 />
               </div>
-              <button type="submit" className="btn" disabled={busy}>
+              <label className="as-terms">
+                <input
+                  type="checkbox"
+                  required
+                  checked={accepted}
+                  onChange={(e) => setAccepted(e.target.checked)}
+                />
+                <span>
+                  I am {MIN_AGE}+ and have read and agree to the{" "}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer">
+                    Terms
+                  </a>
+                  ,{" "}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                    Privacy Policy
+                  </a>
+                  ,{" "}
+                  <a href="/cookies" target="_blank" rel="noopener noreferrer">
+                    Cookie Policy
+                  </a>{" "}
+                  and{" "}
+                  <a href="/refunds" target="_blank" rel="noopener noreferrer">
+                    Refunds &amp; Cancellation Policy
+                  </a>
+                  , including that <b>payments are non-refundable</b> and I cover any bank or
+                  provider charges.
+                </span>
+              </label>
+              <button type="submit" className="btn" disabled={busy || !accepted}>
                 {busy ? "Creating…" : "Sign up"}
               </button>
             </form>
@@ -285,6 +330,14 @@ export function AuthSwitch({
           </div>
         </div>
       </div>
+
+      <nav aria-label="Legal" className="as-legal">
+        {LEGAL_LINKS.map((l) => (
+          <a key={l.to} href={l.to}>
+            {l.label}
+          </a>
+        ))}
+      </nav>
     </div>
   );
 }
