@@ -23,6 +23,8 @@ export interface ScanSnapshot {
 
 export interface ScannerState {
   mode: "league" | "date";
+  /** SCAN_SPORTS id, or "all" for every 3-way sport. */
+  sport: string;
   /** Odds API league key, e.g. "soccer_epl". */
   leagueId: string;
   date: string;
@@ -48,6 +50,7 @@ export const CACHE_MS = 3 * 60 * 1000;
 
 export const defaultScannerState = (): ScannerState => ({
   mode: "date",
+  sport: "soccer",
   leagueId: "",
   date: "",
   leagueIds: [],

@@ -32,7 +32,53 @@ export interface Game {
 export interface League {
   key: string;
   title: string;
+  /** SCAN_SPORTS id the league belongs to. */
+  sport?: string;
 }
+
+/**
+ * Sports the scanner can price. Every one must price a Draw in its plain h2h
+ * market at EU/UK books — the 3-way shape the cover-bet math understands
+ * (checked live: NHL h2h carries a Draw; Aussie rules h2h does not, so it is
+ * left out). `group` is the /sports endpoint's group name, `prefix` the
+ * league-key prefix.
+ */
+export interface ScanSport {
+  id: string;
+  label: string;
+  group: string;
+  prefix: string;
+  flag: string;
+}
+
+export const SCAN_SPORTS: readonly ScanSport[] = [
+  { id: "soccer", label: "Football", group: "Soccer", prefix: "soccer", flag: "⚽" },
+  { id: "icehockey", label: "Ice hockey", group: "Ice Hockey", prefix: "icehockey", flag: "🏒" },
+  {
+    id: "rugbyunion",
+    label: "Rugby union",
+    group: "Rugby Union",
+    prefix: "rugbyunion",
+    flag: "🏉",
+  },
+  {
+    id: "rugbyleague",
+    label: "Rugby league",
+    group: "Rugby League",
+    prefix: "rugbyleague",
+    flag: "🏉",
+  },
+  { id: "handball", label: "Handball", group: "Handball", prefix: "handball", flag: "🤾" },
+];
+
+/** Pseudo-sport: every league of every 3-way sport. */
+export const ALL_SPORTS = "all";
+
+/** The 3-way sport a league key belongs to, or undefined for anything else. */
+export const sportOfLeague = (leagueKey: string): ScanSport | undefined =>
+  SCAN_SPORTS.find((s) => leagueKey.startsWith(`${s.prefix}_`));
+
+export const leagueFlag = (leagueKey: string): string => sportOfLeague(leagueKey)?.flag ?? "🏟️";
 
 export interface OddsResponse {
   games: Game[];
@@ -73,13 +119,17 @@ interface ApiEvent {
 /**
  * API event -> Game: W/D/L are home win / draw / away win. Books missing a
  * three-way market (or any leg) are dropped, as are fixtures left with none.
+ * The explicit `h2h_3_way` market wins over `h2h`, which is 2-way (no draw)
+ * outside football.
  */
 export function normalizeEvents(events: ApiEvent[] | null | undefined): Game[] {
   return (events || [])
     .map((ev) => {
       const books = (ev.bookmakers || [])
         .map((bk) => {
-          const market = (bk.markets || []).find((m) => m.key === "h2h" || m.key === "h2h_3_way");
+          const markets = bk.markets || [];
+          const market =
+            markets.find((m) => m.key === "h2h_3_way") ?? markets.find((m) => m.key === "h2h");
           if (!market) return null;
           const odds = { W: 0, D: 0, L: 0 };
           for (const out of market.outcomes || []) {
@@ -135,7 +185,7 @@ export function toFeedGames(
       id: g.id,
       leagueId: league.key,
       league: league.title,
-      flag: "⚽",
+      flag: leagueFlag(league.key),
       home: g.home,
       away: g.away,
       kickoff: Date.parse(g.commence),
@@ -167,11 +217,11 @@ export interface OddsRequest {
 }
 
 const leaguesFn = createServerFn({ method: "POST" })
-  .inputValidator((d: { accessToken: string }) => d)
+  .inputValidator((d: { accessToken: string; sport?: string }) => d)
   .handler(async ({ data }) => {
     const { loadLeagues, assertApprovedUser } = await import("./odds-server");
     await assertApprovedUser(data.accessToken);
-    return loadLeagues("soccer");
+    return loadLeagues(data.sport ?? "soccer");
   });
 
 const oddsFn = createServerFn({ method: "POST" })
@@ -195,9 +245,12 @@ export async function fetchOddsConfigured(): Promise<boolean> {
   return (await statusFn()).configured;
 }
 
-/** Football leagues currently in season (free endpoint, cached server-side). */
-export function fetchLeagues(accessToken: string): Promise<League[]> {
-  return leaguesFn({ data: { accessToken } });
+/**
+ * In-season leagues for one SCAN_SPORTS id, or ALL_SPORTS for every 3-way
+ * sport (free endpoint, cached server-side).
+ */
+export function fetchLeagues(accessToken: string, sport = "soccer"): Promise<League[]> {
+  return leaguesFn({ data: { accessToken, sport } });
 }
 
 /** 1X2 odds for one league, optionally restricted to a kickoff window (ISO, no ms). */

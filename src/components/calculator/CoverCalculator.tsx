@@ -537,6 +537,7 @@ export function CoverCalculator() {
         <aside className="min-w-0 space-y-3">
           {/* Setup */}
           <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
+            <p className="text-xs font-bold uppercase text-secondary-foreground">Setup</p>
             <div className="flex flex-wrap items-end gap-2">
               <Field label="Teams" className="min-w-0 flex-1">
                 <Select
@@ -572,6 +573,111 @@ export function CoverCalculator() {
             </div>
           </div>
 
+          {/* Teams & odds */}
+          <section className="overflow-hidden rounded-md bg-card shadow-card">
+            <PanelHead title="Teams & odds">
+              <button
+                onClick={clearOdds}
+                className="flex h-7 items-center gap-1 rounded px-2 text-xs font-semibold text-secondary-foreground hover:bg-card"
+              >
+                <Eraser className="h-3.5 w-3.5" /> Clear odds
+              </button>
+            </PanelHead>
+            <div className="px-3 pt-3">
+              <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
+                <p className="text-xs font-bold uppercase text-secondary-foreground">
+                  Scenario to give up
+                </p>
+                <div className="flex gap-2">
+                  <Select
+                    value={sacrifice}
+                    onValueChange={setSacrifice}
+                    disabled={giveUps.length === 0}
+                  >
+                    <SelectTrigger className="h-9 min-w-0 flex-1 bg-card text-xs font-semibold">
+                      <SelectValue placeholder="Enter a budget and odds first" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bestPlan && bestPlan.index !== null && (
+                        <SelectItem value="best" className="text-xs">
+                          ★ Best · {scenarioLabel(scenarios[bestPlan.index]!)} ·{" "}
+                          {signedPct(bestPlan.profitPct)}
+                        </SelectItem>
+                      )}
+                      {coverAll && (
+                        <SelectItem value="all" className="text-xs">
+                          Give up nothing · cover {coverAll.coveredCount} ·{" "}
+                          {signedPct(coverAll.profitPct)}
+                        </SelectItem>
+                      )}
+                      {dropPlans.map((g) => (
+                        <SelectItem key={g.index} value={String(g.index)} className="text-xs">
+                          {scenarioLabel(scenarios[g.index!]!)} · {signedPct(g.profitPct)} ·{" "}
+                          {describe(g.index!)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <button
+                    onClick={calculateCover}
+                    disabled={!chosenPlan}
+                    className="btn-cta h-9 shrink-0 px-3 text-xs disabled:opacity-50"
+                  >
+                    Calculate
+                  </button>
+                </div>
+                {chosenPlan && chosenPlan.profitPct < 0 && (
+                  <p className="text-[11px] font-semibold text-destructive">
+                    This plan loses {signedPct(chosenPlan.profitPct)} on every covered scenario.
+                    {bestPlan && bestPlan.index !== null && bestPlan.profitPct > 0
+                      ? ` The best available is ${scenarioLabel(scenarios[bestPlan.index]!)} at ${signedPct(bestPlan.profitPct)}.`
+                      : " No give-up scenario turns a profit at these odds."}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="grid gap-2 p-3">
+              {tab.events.map((e, k) => (
+                <div key={k} className="space-y-1 rounded-md border bg-muted/50 p-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={e.name}
+                      onChange={(ev) => setEvent(k, { name: ev.target.value })}
+                      placeholder={`Team ${EVENT_LETTERS[k]}`}
+                      className="h-9 min-w-0 flex-1 rounded border border-input bg-card px-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <div className="flex shrink-0 gap-1">
+                      {(["W", "D", "L"] as const).map((o, oi) => (
+                        <input
+                          key={o}
+                          aria-label={`${EVENT_LETTERS[k]} ${WORD[o]} odds`}
+                          inputMode="decimal"
+                          placeholder={o}
+                          // 1 event: the input IS the scenario row's odds, exactly
+                          // like OctoOdds — raw text, no rounding.
+                          value={count === 1 ? (tab.rows[oi]?.odds ?? "") : e[o]}
+                          onChange={(ev) => {
+                            const v = clean(ev.target.value);
+                            if (count === 1)
+                              update((t) => ({
+                                events: t.events.map((x, j) => (j === k ? { ...x, [o]: v } : x)),
+                                rows: t.rows.map((r, j) => (j === oi ? { ...r, odds: v } : r)),
+                              }));
+                            else setEvent(k, { [o]: v });
+                          }}
+                          className="odd-btn h-9 w-14 border-2 border-lime-500 px-1.5 text-center text-sm tabular-nums outline-none placeholder:font-black placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-lime-400"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {e.matchup && (
+                    <p className="truncate text-[11px] text-muted-foreground">{e.matchup}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* Balance win */}
           <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
             <div className="flex flex-wrap items-center gap-2">
@@ -582,7 +688,7 @@ export function CoverCalculator() {
                   </span>
                 )}
               </span>
-              <div className="order-3 w-full space-y-1 sm:order-2 sm:min-w-0 sm:flex-1">
+              <div className="order-3 w-full space-y-1 sm:order-2 sm:min-w-44 sm:flex-1">
                 <div className="relative">
                   <input
                     inputMode="decimal"
@@ -645,7 +751,7 @@ export function CoverCalculator() {
                 onClick={applyWin}
                 className="btn-cta order-2 ml-auto h-9 w-24 shrink-0 text-xs sm:order-3"
               >
-                Balance win
+                Balance
               </button>
             </div>
             <p className="flex items-baseline justify-end gap-x-4 text-sm font-semibold text-muted-foreground">
@@ -681,62 +787,6 @@ export function CoverCalculator() {
             )}
           </div>
 
-          {/* Scenario to give up */}
-          <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
-            <p className="text-xs font-bold uppercase text-secondary-foreground">
-              Scenario to give up{" "}
-              <span className="font-normal normal-case text-muted-foreground">
-                (the rest share the budget for equal profit)
-              </span>
-            </p>
-            <div className="flex gap-2">
-              <Select
-                value={sacrifice}
-                onValueChange={setSacrifice}
-                disabled={giveUps.length === 0}
-              >
-                <SelectTrigger className="h-9 min-w-0 flex-1 bg-card text-xs font-semibold">
-                  <SelectValue placeholder="Enter a budget and odds first" />
-                </SelectTrigger>
-                <SelectContent>
-                  {bestPlan && bestPlan.index !== null && (
-                    <SelectItem value="best" className="text-xs">
-                      ★ Best · {scenarioLabel(scenarios[bestPlan.index]!)} ·{" "}
-                      {signedPct(bestPlan.profitPct)}
-                    </SelectItem>
-                  )}
-                  {coverAll && (
-                    <SelectItem value="all" className="text-xs">
-                      Give up nothing · cover {coverAll.coveredCount} ·{" "}
-                      {signedPct(coverAll.profitPct)}
-                    </SelectItem>
-                  )}
-                  {dropPlans.map((g) => (
-                    <SelectItem key={g.index} value={String(g.index)} className="text-xs">
-                      {scenarioLabel(scenarios[g.index!]!)} · {signedPct(g.profitPct)} ·{" "}
-                      {describe(g.index!)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <button
-                onClick={calculateCover}
-                disabled={!chosenPlan}
-                className="btn-cta h-9 shrink-0 px-3 text-xs disabled:opacity-50"
-              >
-                Calculate
-              </button>
-            </div>
-            {chosenPlan && chosenPlan.profitPct < 0 && (
-              <p className="text-[11px] font-semibold text-destructive">
-                This plan loses {signedPct(chosenPlan.profitPct)} on every covered scenario.
-                {bestPlan && bestPlan.index !== null && bestPlan.profitPct > 0
-                  ? ` The best available is ${scenarioLabel(scenarios[bestPlan.index]!)} at ${signedPct(bestPlan.profitPct)}.`
-                  : " No give-up scenario turns a profit at these odds."}
-              </p>
-            )}
-          </div>
-
           {/* Fill stakes */}
           <div className="space-y-1.5 rounded-md border bg-muted/50 p-2.5">
             <p className="text-xs font-bold uppercase text-secondary-foreground">Fill stakes</p>
@@ -757,58 +807,6 @@ export function CoverCalculator() {
               </button>
             </div>
           </div>
-
-          {/* Teams & odds */}
-          <section className="overflow-hidden rounded-md bg-card shadow-card">
-            <PanelHead title="Teams & odds">
-              <button
-                onClick={clearOdds}
-                className="flex h-7 items-center gap-1 rounded px-2 text-xs font-semibold text-secondary-foreground hover:bg-card"
-              >
-                <Eraser className="h-3.5 w-3.5" /> Clear odds
-              </button>
-            </PanelHead>
-            <div className="grid gap-2 p-3">
-              {tab.events.map((e, k) => (
-                <div key={k} className="space-y-1 rounded-md border bg-muted/50 p-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={e.name}
-                      onChange={(ev) => setEvent(k, { name: ev.target.value })}
-                      placeholder={`Team ${EVENT_LETTERS[k]}`}
-                      className="h-9 min-w-0 flex-1 rounded border border-input bg-card px-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-ring"
-                    />
-                    <div className="flex shrink-0 gap-1">
-                      {(["W", "D", "L"] as const).map((o, oi) => (
-                        <input
-                          key={o}
-                          aria-label={`${EVENT_LETTERS[k]} ${WORD[o]} odds`}
-                          inputMode="decimal"
-                          placeholder={o}
-                          // 1 event: the input IS the scenario row's odds, exactly
-                          // like OctoOdds — raw text, no rounding.
-                          value={count === 1 ? (tab.rows[oi]?.odds ?? "") : e[o]}
-                          onChange={(ev) => {
-                            const v = clean(ev.target.value);
-                            if (count === 1)
-                              update((t) => ({
-                                events: t.events.map((x, j) => (j === k ? { ...x, [o]: v } : x)),
-                                rows: t.rows.map((r, j) => (j === oi ? { ...r, odds: v } : r)),
-                              }));
-                            else setEvent(k, { [o]: v });
-                          }}
-                          className="odd-btn h-9 w-14 border-2 border-lime-500 px-1.5 text-center text-sm tabular-nums outline-none placeholder:font-black placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-lime-400"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  {e.matchup && (
-                    <p className="truncate text-[11px] text-muted-foreground">{e.matchup}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
         </aside>
 
         {/* Main column */}

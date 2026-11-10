@@ -265,7 +265,7 @@ export function Edge() {
               <div className="flex flex-wrap items-end gap-3 border-b px-3 py-2.5">
                 <Labeled label="Legs">
                   <div className="flex rounded-md bg-muted p-0.5">
-                    {[2, 3, 4].map((n) => (
+                    {[1, 2, 3, 4].map((n) => (
                       <button
                         key={n}
                         onClick={() => {

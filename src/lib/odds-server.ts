@@ -17,7 +17,15 @@
 
 import { createServerOnlyFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
-import { normalizeEvents, type Game, type League, type OddsResponse } from "./live-odds";
+import {
+  ALL_SPORTS,
+  SCAN_SPORTS,
+  normalizeEvents,
+  sportOfLeague,
+  type Game,
+  type League,
+  type OddsResponse,
+} from "./live-odds";
 
 const BASE = "https://api.the-odds-api.com/v4";
 
@@ -150,50 +158,41 @@ const apiError = async (res: Response): Promise<string> => {
 const scrub = (message: string, key: string): string =>
   key ? message.split(key).join("<redacted>") : message;
 
-// Sports the scanner exposes, mapped to the /sports endpoint's group names.
-// Everything here must price as a 3-way (W/D/L) market — that is the only
-// shape the cover-bet math understands. Soccer's plain h2h is already 3-way;
-// any future non-soccer sport gets the explicit h2h_3_way market — see
-// marketForSport below.
-const SPORT_GROUPS: Record<string, string> = {
-  soccer: "Soccer",
-};
-
-export async function loadLeagues(sport: string): Promise<League[]> {
-  const group = SPORT_GROUPS[sport];
-  if (!group) throw new Error(`Unknown sport: ${sport}`);
-  const key = readKey();
-  if (!key) throw new Error("The odds API key is not configured on the server.");
-
-  const { value } = await cached<League[]>(`leagues:${sport}`, LEAGUES_TTL_MS, async () => {
-    const res = await fetch(`${BASE}/sports/?apiKey=${key}`);
-    if (!res.ok) throw new Error(scrub(await apiError(res), key));
-    const all = (await res.json()) as {
-      key: string;
-      title: string;
-      group: string;
-      active: boolean;
-      has_outrights: boolean;
-    }[];
-    // Outright entries ("NHL Championship Winner", "Super Bowl Winner") are
-    // futures with no fixtures, so a scan of them can only return nothing.
-    // Inactive means off-season: the API serves no odds for those either, and
-    // they reappear here automatically when their season starts.
-    return all
-      .filter((s) => s.group === group && s.active && !s.has_outrights)
-      .map((s) => ({ key: s.key, title: s.title }));
-  });
-  return value;
+interface ApiSport {
+  key: string;
+  title: string;
+  group: string;
+  active: boolean;
+  has_outrights: boolean;
 }
 
 /**
- * Which market to request for a league. Derived server-side from the sport
- * key rather than trusted from the client, so nothing can request the 2-way
- * moneyline the math cannot price. Sport keys from the API are prefixed
- * (soccer_epl, icehockey_nhl, americanfootball_nfl, ...).
+ * In-season leagues for one SCAN_SPORTS id, or ALL_SPORTS for all of them.
+ * Every sport here prices as a 3-way (W/D/L) market — the only shape the
+ * cover-bet math understands; 2-way sports (tennis, NBA, MMA) are not listed.
  */
-const marketForSport = (sportKey: string): string =>
-  sportKey.startsWith("soccer") ? "h2h" : "h2h_3_way";
+export async function loadLeagues(sport: string): Promise<League[]> {
+  const sports = sport === ALL_SPORTS ? SCAN_SPORTS : SCAN_SPORTS.filter((s) => s.id === sport);
+  if (sports.length === 0) throw new Error(`Unknown sport: ${sport}`);
+  const key = readKey();
+  if (!key) throw new Error("The odds API key is not configured on the server.");
+
+  // One cached copy of the whole list serves every sport filter.
+  const { value: all } = await cached<ApiSport[]>("sports:list", LEAGUES_TTL_MS, async () => {
+    const res = await fetch(`${BASE}/sports/?apiKey=${key}`);
+    if (!res.ok) throw new Error(scrub(await apiError(res), key));
+    return (await res.json()) as ApiSport[];
+  });
+  // Outright entries ("NHL Championship Winner", "Super Bowl Winner") are
+  // futures with no fixtures, so a scan of them can only return nothing.
+  // Inactive means off-season: the API serves no odds for those either, and
+  // they reappear here automatically when their season starts.
+  return sports.flatMap((sp) =>
+    all
+      .filter((s) => s.group === sp.group && s.active && !s.has_outrights)
+      .map((s) => ({ key: s.key, title: s.title, sport: sp.id })),
+  );
+}
 
 export interface CachedOdds extends OddsResponse {
   /** True when no upstream call was made, so no credits were spent. */
@@ -211,16 +210,19 @@ export async function loadLeagueOdds(
 ): Promise<CachedOdds> {
   const key = readKey();
   if (!key) throw new Error("The odds API key is not configured on the server.");
+  // Only leagues of a 3-way sport may spend credits.
+  if (!sportOfLeague(sportKey)) throw new Error(`Unsupported league: ${sportKey}`);
 
   const selector = bookmakers ? `bookmakers=${bookmakers}` : `regions=${regions}`;
   const window =
     (from ? `&commenceTimeFrom=${encodeURIComponent(from)}` : "") +
     (to ? `&commenceTimeTo=${encodeURIComponent(to)}` : "");
+  // Always plain h2h: the bulk odds endpoint rejects h2h_3_way (422), and for
+  // every SCAN_SPORTS sport the h2h outcomes include a Draw at EU/UK books.
+  // Any event priced 2-way is dropped by normalizeEvents.
   // The cache key deliberately excludes the API key: it identifies the data,
   // not the caller, so every user shares one entry.
-  const path = `${BASE}/sports/${sportKey}/odds/?${selector}&markets=${marketForSport(
-    sportKey,
-  )}&oddsFormat=decimal${window}`;
+  const path = `${BASE}/sports/${sportKey}/odds/?${selector}&markets=h2h&oddsFormat=decimal${window}`;
 
   const {
     value,

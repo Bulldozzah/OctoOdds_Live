@@ -39,11 +39,15 @@ import {
   type Region,
 } from "@/lib/odds-feed";
 import {
+  ALL_SPORTS,
+  SCAN_SPORTS,
   apiBookKey,
   apiIso,
   fetchLeagueOdds,
   fetchLeagues,
   fetchOddsConfigured,
+  leagueFlag,
+  sportOfLeague,
   toFeedGames,
   type League,
 } from "@/lib/live-odds";
@@ -154,7 +158,8 @@ export function Scanner() {
   const hasToken = !!token;
   useEffect(() => {
     if (!ready || !hasKey || !tokenRef.current) return;
-    fetchLeagues(tokenRef.current)
+    setLeagues([]);
+    fetchLeagues(tokenRef.current, s.sport)
       .then((ls) => {
         setLeagues(ls);
         setS((p) => {
@@ -169,7 +174,7 @@ export function Scanner() {
         });
       })
       .catch((e: Error) => toast.error("Couldn't load leagues", { description: e.message }));
-  }, [ready, hasKey, hasToken]);
+  }, [ready, hasKey, hasToken, s.sport]);
 
   const set = (patch: Partial<ScannerState>) => {
     setS((p) => ({ ...p, ...patch }));
@@ -188,7 +193,12 @@ export function Scanner() {
     if (!s.scan || !now) return null;
     const allowed = booksKey.split(",");
     const fresh = freshGames(s.scan.games, now, allowed, { keepStale: true });
-    let games = fresh.games;
+    // The last scan may hold another sport's games; showing only the picked
+    // sport needs no rescan. Demo leagues have no sport prefix — they're football.
+    const inSport = (g: { leagueId: string }) =>
+      s.sport === ALL_SPORTS || (sportOfLeague(g.leagueId)?.id ?? "soccer") === s.sport;
+    const sportHidden = fresh.games.filter((g) => !inSport(g)).length;
+    let games = fresh.games.filter(inSport);
     if (s.timeFrom || s.timeTo) {
       games = games.filter((g) => {
         const t = hhmm(g.kickoff);
@@ -225,9 +235,17 @@ export function Scanner() {
             payout: 1 + a.profitPct / 100,
           }))
         : [];
-    return { fresh, games, results, arbs, guaranteed: results.filter((r) => r.full).length };
+    return {
+      fresh,
+      games,
+      results,
+      arbs,
+      sportHidden,
+      guaranteed: results.filter((r) => r.full).length,
+    };
   }, [
     s.scan,
+    s.sport,
     s.timeFrom,
     s.timeTo,
     s.rangeFrom,
@@ -299,7 +317,7 @@ export function Scanner() {
     commit({
       source: "league",
       key: scanKey,
-      label: `⚽ ${league.title}`,
+      label: `${leagueFlag(league.key)} ${league.title}`,
       fetchedAt: r.fetchedAt,
       games: upcoming,
       bookTitles,
@@ -624,6 +642,25 @@ export function Scanner() {
         <aside className="space-y-3">
           <Card title="Scan settings">
             <div className="space-y-3 p-3">
+              <Field label="Sport">
+                <Select
+                  value={s.sport}
+                  onValueChange={(v) => set({ sport: v, leagueId: "", leagueIds: [] })}
+                  disabled={!hasKey}
+                >
+                  <SelectTrigger className="h-9 bg-card font-semibold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SCAN_SPORTS.map((sp) => (
+                      <SelectItem key={sp.id} value={sp.id}>
+                        {sp.flag} {sp.label}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={ALL_SPORTS}>All 3-way sports</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
               {s.mode === "league" ? (
                 <Field label="League">
                   <Select
@@ -637,7 +674,7 @@ export function Scanner() {
                     <SelectContent className="max-h-80">
                       {leagues.map((l) => (
                         <SelectItem key={l.key} value={l.key}>
-                          {l.title}
+                          {leagueFlag(l.key)} {l.title}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -662,7 +699,24 @@ export function Scanner() {
                   className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-ring"
                 />
               </Field>
-              <Field label="Kickoff time">
+              <Field
+                label={
+                  <>
+                    Kickoff time
+                    {(s.timeFrom || s.timeTo) && (
+                      <button
+                        type="button"
+                        aria-label="Reset kickoff time"
+                        disabled={!scan}
+                        onClick={() => set({ timeFrom: "", timeTo: "" })}
+                        className="ml-2 normal-case tracking-normal text-destructive/80 underline-offset-2 hover:text-destructive hover:underline disabled:opacity-50"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </>
+                }
+              >
                 <div className="grid grid-cols-2 gap-2">
                   {(["timeFrom", "timeTo"] as const).map((k) => (
                     <input
@@ -763,7 +817,9 @@ export function Scanner() {
                           })
                         }
                       />
-                      <span className="flex-1 truncate font-medium">{l.title}</span>
+                      <span className="flex-1 truncate font-medium">
+                        {leagueFlag(l.key)} {l.title}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -882,11 +938,13 @@ export function Scanner() {
               />
               {results.length === 0 ? (
                 <p className="rounded-md bg-card px-4 py-10 text-center text-sm text-muted-foreground shadow-card">
-                  {computed.games.length === 0 && scan.games.length > 0
-                    ? "Every fixture in this scan has kicked off, or none of the selected books price them. Scan again for current games."
-                    : computed.games.length < s.combine
-                      ? `Only ${computed.games.length} game${computed.games.length === 1 ? "" : "s"} available — ${s.combine}-game combos need at least ${s.combine}.`
-                      : `No combos clear ${s.minProfit || 0}% with these filters. Try a lower minimum profit, fewer games per combo, best odds across books, or more leagues.`}
+                  {computed.games.length === 0 && computed.sportHidden > 0
+                    ? `The last scan has no ${SCAN_SPORTS.find((sp) => sp.id === s.sport)?.label.toLowerCase() ?? "games for this sport"} games. Press Scan to fetch them.`
+                    : computed.games.length === 0 && scan.games.length > 0
+                      ? "Every fixture in this scan has kicked off, or none of the selected books price them. Scan again for current games."
+                      : computed.games.length < s.combine
+                        ? `Only ${computed.games.length} game${computed.games.length === 1 ? "" : "s"} available — ${s.combine}-game combos need at least ${s.combine}.`
+                        : `No combos clear ${s.minProfit || 0}% with these filters. Try a lower minimum profit, fewer games per combo, best odds across books, or more leagues.`}
                 </p>
               ) : (
                 <div className="grid gap-3 xl:grid-cols-2">
@@ -953,7 +1011,7 @@ export function Scanner() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <span className="block text-[11px] font-bold uppercase text-secondary-foreground">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { consensusProbs, expectedVsActual, rankMargins, valueOf } from "./edge";
+import { consensusProbs, expectedVsActual, rankMargins, valueOf, valueRanking } from "./edge";
 
 const game = (id: string, quotes: Record<string, { W: number; D: number; L: number }>) => ({
   id,
@@ -17,7 +17,10 @@ describe("edge valuation", () => {
 
   it("ranks markets tightest margin first", () => {
     const rows = rankMargins(
-      [game("wide", { a: { W: 1.8, D: 3.2, L: 3.8 } }), game("tight", { a: { W: 2.05, D: 3.5, L: 4.1 } })],
+      [
+        game("wide", { a: { W: 1.8, D: 3.2, L: 3.8 } }),
+        game("tight", { a: { W: 2.05, D: 3.5, L: 4.1 } }),
+      ],
       "book",
       "a",
     );
@@ -32,6 +35,17 @@ describe("edge valuation", () => {
     // Best single exclusion is Draw: covering W + L returns 1/(1/2.1+1/4.3) per unit, landing 73% of the time.
     expect(v.pattern).toBe("D");
     expect(v.evPer100).toBeCloseTo(100 * 0.73 * (1 / (1 / 2.1 + 1 / 4.3)), 6);
+  });
+
+  it("ranks single-leg slips, one per game", () => {
+    const items = rankMargins(
+      [game("x", { a: { W: 2.1, D: 3.6, L: 4.3 } }), game("y", { a: { W: 1.9, D: 3.4, L: 4.6 } })],
+      "best",
+      "a",
+    ).map((it) => ({ ...it, fair: { W: 0.5, D: 0.27, L: 0.23 } }));
+    const rows = valueRanking(items, 1, -100);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.evPer100).toBeGreaterThanOrEqual(rows[1]!.evPer100);
   });
 
   it("compares expected with actual returns on settled bets", () => {
